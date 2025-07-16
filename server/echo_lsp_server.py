@@ -216,19 +216,37 @@ class EchoLSPServer:
                     content_length = length
 
             if content_length is None:
+                self.log("No Content-Length header found")
                 return None
 
-            # Read content
-            content = sys.stdin.read(content_length)
-            if not content:
-                return None
+            # Read exactly content_length bytes
+            content = ""
+            remaining = content_length
+            while remaining > 0:
+                chunk = sys.stdin.read(remaining)
+                if not chunk:
+                    self.log("Unexpected end of input while reading content")
+                    return None
+                content += chunk
+                remaining -= len(chunk)
 
-            return json.loads(content)
+            self.log(
+                f"Received message: {content[:200]}{'...' if len(content) > 200 else ''}"
+            )
+
+            # Parse JSON
+            message = json.loads(content)
+            return message
 
         except (json.JSONDecodeError, ValueError) as e:
             self.log(f"Error parsing message: {e}")
+            self.log(f"Content length: {content_length}")
+            self.log(
+                f"Content preview: {content[:500] if 'content' in locals() else 'No content'}"
+            )
             return None
         except EOFError:
+            self.log("EOF reached")
             return None
 
     def handle_request(self, request: Dict[str, Any]) -> None:
