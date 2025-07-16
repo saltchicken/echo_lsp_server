@@ -186,7 +186,7 @@ class EchoLSPServer:
     def handle_request(self, request: Dict[str, Any]) -> None:
         """Handle incoming JSON-RPC request"""
         method = request.get("method")
-        self.log(method)
+        self.log(f"Method: {method}")
 
         if method == "initialize":
             self.handle_initialize(request)
