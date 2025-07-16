@@ -59,6 +59,29 @@ class EchoLSPServer:
             },
         )
 
+    def handle_ghost(self, request: Dict[str, Any]) -> None:
+        """Handle Ctrl+Space ghost request"""
+        params = request["params"]
+        uri = params["textDocument"]["uri"]
+        position = params["position"]
+        line = position["line"]
+
+        response = {"jsonrpc": "2.0", "id": request["id"], "result": None}
+
+        if uri in self.document_store:
+            lines = self.document_store[uri]
+            if 0 <= line < len(lines):
+                current_line = lines[line]
+                ghost_text = f"👻 ghost: {current_line.strip()}"
+                self.send_ghost_text(uri, line, ghost_text)
+                response["result"] = {"sent": True}
+            else:
+                response["result"] = {"sent": False}
+        else:
+            response["result"] = {"sent": False}
+
+        self.send_response(response)
+
     def handle_initialize(self, request: Dict[str, Any]) -> None:
         """Handle the initialize request"""
         capabilities = {
@@ -120,30 +143,28 @@ class EchoLSPServer:
 
         response = {"jsonrpc": "2.0", "id": request["id"], "result": None}
 
-        self.send_ghost_text(uri, line_number, "Hello World")
+        if uri in self.document_store:
+            lines = self.document_store[uri]
+            if 0 <= line_number < len(lines):
+                current_line = lines[line_number]
+                hover_content = {
+                    "kind": "markdown",
+                    "value": f"**Echo LSP Server**\n\nCurrent line ({line_number + 1}): `{current_line}`",
+                }
+                response["result"] = {
+                    "contents": hover_content,
+                    "range": {
+                        "start": {"line": line_number, "character": 0},
+                        "end": {"line": line_number, "character": len(current_line)},
+                    },
+                }
+                self.log(f"Hover response for line {line_number + 1}: {current_line}")
+            else:
+                self.log(f"Line {line_number} out of range")
+        else:
+            self.log(f"Document not found: {uri}")
 
-        # if uri in self.document_store:
-        #     lines = self.document_store[uri]
-        #     if 0 <= line_number < len(lines):
-        #         current_line = lines[line_number]
-        #         hover_content = {
-        #             "kind": "markdown",
-        #             "value": f"**Echo LSP Server**\n\nCurrent line ({line_number + 1}): `{current_line}`",
-        #         }
-        #         response["result"] = {
-        #             "contents": hover_content,
-        #             "range": {
-        #                 "start": {"line": line_number, "character": 0},
-        #                 "end": {"line": line_number, "character": len(current_line)},
-        #             },
-        #         }
-        #         self.log(f"Hover response for line {line_number + 1}: {current_line}")
-        #     else:
-        #         self.log(f"Line {line_number} out of range")
-        # else:
-        #     self.log(f"Document not found: {uri}")
-        #
-        # self.send_response(response)
+        self.send_response(response)
 
     def handle_shutdown(self, request: Dict[str, Any]) -> None:
         """Handle shutdown request"""
@@ -212,6 +233,8 @@ class EchoLSPServer:
             self.handle_text_document_did_close(request["params"])
         elif method == "textDocument/hover":
             self.handle_hover(request)
+        elif method == "textDocument/ghostText":
+            self.handle_ghost(request)
         elif method == "shutdown":
             self.handle_shutdown(request)
         elif method == "exit":
