@@ -203,7 +203,7 @@ class EchoLSPServer:
             # Read headers
             content_length = None
             while True:
-                line = sys.stdin.readline()
+                line = sys.stdin.buffer.readline().decode("utf-8")
                 if not line:
                     return None
 
@@ -219,19 +219,17 @@ class EchoLSPServer:
                 self.log("No Content-Length header found")
                 return None
 
-            # Read exactly content_length bytes
-            content = ""
-            remaining = content_length
-            while remaining > 0:
-                chunk = sys.stdin.read(remaining)
-                if not chunk:
-                    self.log("Unexpected end of input while reading content")
-                    return None
-                content += chunk
-                remaining -= len(chunk)
+            # Read exactly content_length bytes from buffer
+            content_bytes = sys.stdin.buffer.read(content_length)
+            if len(content_bytes) != content_length:
+                self.log(f"Expected {content_length} bytes, got {len(content_bytes)}")
+                return None
+
+            # Decode to string
+            content = content_bytes.decode("utf-8")
 
             self.log(
-                f"Received message: {content[:200]}{'...' if len(content) > 200 else ''}"
+                f"Received message length: {len(content)} chars, {len(content_bytes)} bytes"
             )
 
             # Parse JSON
@@ -240,10 +238,15 @@ class EchoLSPServer:
 
         except (json.JSONDecodeError, ValueError) as e:
             self.log(f"Error parsing message: {e}")
-            self.log(f"Content length: {content_length}")
             self.log(
-                f"Content preview: {content[:500] if 'content' in locals() else 'No content'}"
+                f"Content length: {content_length if 'content_length' in locals() else 'Unknown'}"
             )
+            if "content" in locals():
+                self.log(f"Content preview: {repr(content[:200])}")
+                self.log(f"Content end: {repr(content[-50:])}")
+            return None
+        except UnicodeDecodeError as e:
+            self.log(f"Unicode decode error: {e}")
             return None
         except EOFError:
             self.log("EOF reached")
