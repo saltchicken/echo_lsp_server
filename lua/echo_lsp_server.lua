@@ -1,4 +1,4 @@
--- echo_lsp.lua
+-- echo_lsp_server.lua
 
 local lsp_config = require('lspconfig')
 local util = require('lspconfig.util')
@@ -6,12 +6,20 @@ local util = require('lspconfig.util')
 local server_name = 'echo_lsp_server'
 
 local function get_server_path()
-    -- This assumes the plugin is installed in a standard path
-    local plugin_path = util.root_pattern('server/echo_lsp_server.py')()
-    if not plugin_path then
-        return nil
+    local path = util.path
+    local script_path = debug.getinfo(1, "S").source
+    if script_path:sub(1,1) == "@" then
+        script_path = script_path:sub(2)
     end
-    return plugin_path .. '/scripts/launch.sh'
+    local plugin_dir = path.dirname(path.dirname(script_path))
+    local launch_script = path.join(plugin_dir, "scripts", "launch.sh")
+
+    -- Ensure launch script is executable
+    if vim.fn.has("unix") == 1 then
+        vim.fn.system("chmod +x " .. vim.fn.fnameescape(launch_script))
+    end
+
+    return launch_script
 end
 
 lsp_config[server_name] = {
