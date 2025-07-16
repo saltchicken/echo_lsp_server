@@ -1,6 +1,6 @@
 """
 Simple Echo LSP Server for Neovim
-This LSP server echoes the current line as hover information.
+This LSP server echoes the current line as hover information and supports ghost text.
 """
 
 import json
@@ -50,12 +50,13 @@ class EchoLSPServer:
         self.send_response(response)
 
     def send_ghost_text(self, uri: str, line: int, text: str) -> None:
+        """Send ghost text notification to the client"""
         self.send_notification(
             "ghostText/virtualText",
             {
                 "uri": uri,
                 "line": line,
-                "text": text,
+                "text": f"👻 {text}",  # Add ghost emoji for visual indication
             },
         )
 
@@ -143,6 +144,43 @@ class EchoLSPServer:
 
         self.send_response(response)
 
+    def handle_trigger_ghost_text(self, request: Dict[str, Any]) -> None:
+        """Handle custom ghost text trigger request"""
+        params = request["params"]
+        uri = params["textDocument"]["uri"]
+        position = params["position"]
+        line_number = position["line"]
+
+        response = {"jsonrpc": "2.0", "id": request["id"], "result": None}
+
+        if uri in self.document_store:
+            lines = self.document_store[uri]
+            if 0 <= line_number < len(lines):
+                current_line = lines[line_number]
+
+                # Send ghost text notification
+                self.send_ghost_text(uri, line_number, current_line)
+
+                # Send success response
+                response["result"] = {"success": True}
+                self.log(
+                    f"Ghost text triggered for line {line_number + 1}: {current_line}"
+                )
+            else:
+                response["error"] = {
+                    "code": -32602,
+                    "message": f"Line {line_number} out of range",
+                }
+                self.log(f"Ghost text trigger failed: Line {line_number} out of range")
+        else:
+            response["error"] = {
+                "code": -32602,
+                "message": f"Document not found: {uri}",
+            }
+            self.log(f"Ghost text trigger failed: Document not found: {uri}")
+
+        self.send_response(response)
+
     def handle_shutdown(self, request: Dict[str, Any]) -> None:
         """Handle shutdown request"""
         response = {"jsonrpc": "2.0", "id": request["id"], "result": None}
@@ -210,6 +248,8 @@ class EchoLSPServer:
             self.handle_text_document_did_close(request["params"])
         elif method == "textDocument/hover":
             self.handle_hover(request)
+        elif method == "custom/triggerGhostText":
+            self.handle_trigger_ghost_text(request)
         elif method == "shutdown":
             self.handle_shutdown(request)
         elif method == "exit":
