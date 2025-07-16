@@ -59,29 +59,6 @@ class EchoLSPServer:
             },
         )
 
-    def handle_ghost(self, request: Dict[str, Any]) -> None:
-        """Handle Ctrl+Space ghost request"""
-        params = request["params"]
-        uri = params["textDocument"]["uri"]
-        position = params["position"]
-        line = position["line"]
-
-        response = {"jsonrpc": "2.0", "id": request["id"], "result": None}
-
-        if uri in self.document_store:
-            lines = self.document_store[uri]
-            if 0 <= line < len(lines):
-                current_line = lines[line]
-                ghost_text = f"👻 ghost: {current_line.strip()}"
-                self.send_ghost_text(uri, line, ghost_text)
-                response["result"] = {"sent": True}
-            else:
-                response["result"] = {"sent": False}
-        else:
-            response["result"] = {"sent": False}
-
-        self.send_response(response)
-
     def handle_initialize(self, request: Dict[str, Any]) -> None:
         """Handle the initialize request"""
         capabilities = {
@@ -233,8 +210,6 @@ class EchoLSPServer:
             self.handle_text_document_did_close(request["params"])
         elif method == "textDocument/hover":
             self.handle_hover(request)
-        elif method == "textDocument/ghostText":
-            self.handle_ghost(request)
         elif method == "shutdown":
             self.handle_shutdown(request)
         elif method == "exit":
