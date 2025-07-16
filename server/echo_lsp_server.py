@@ -1,4 +1,3 @@
-#!/home/saltchicken/workspace/custom_lsp/.venv/bin/python
 """
 Simple Echo LSP Server for Neovim
 This LSP server echoes the current line as hover information.
