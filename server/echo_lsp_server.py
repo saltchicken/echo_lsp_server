@@ -199,7 +199,7 @@ class EchoLSPServer:
                 self.log(f"Ghost text error: {e}", "ERROR")
 
         task = asyncio.create_task(ghost_text_task())
-        self.add_task(task, uri=uri, request_id=request_id)
+        self.add_task(task)
 
     async def handle_cancel_request(self, message: Dict[str, Any]):
         """Handle LSP cancel request"""
