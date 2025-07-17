@@ -1,12 +1,9 @@
-"""
-Simple Echo LSP Server for Neovim
-This LSP server echoes the current line as hover information and supports ghost text.
-"""
-
+import asyncio
+import aiohttp
 import json
-import sys
-import re
 import os
+import re
+import sys
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 
@@ -16,301 +13,212 @@ class EchoLSPServer:
         self.running = True
         self.initialized = False
         self.document_store: Dict[str, List[str]] = {}
+        self.reader: Optional[asyncio.StreamReader] = None
 
-        # Set up file logging
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
-        self.log_file = os.path.join(log_dir, "echo_lsp.log")
+        self.log_file = os.path.join(log_dir, "echo_lsp_async.log")
 
-        # Clear previous log on startup
         with open(self.log_file, "w") as f:
-            f.write(f"=== Echo LSP Server Started at {datetime.now()} ===\n")
+            f.write(f"=== Echo LSP Async Server Started at {datetime.now()} ===\n")
 
     def log(self, message: str, level: str = "INFO") -> None:
-        """Log messages to file for debugging"""
         try:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             log_message = f"[{timestamp}] [{level}] {message}\n"
             with open(self.log_file, "a") as f:
                 f.write(log_message)
         except Exception:
-            # Fallback to stderr if file logging fails
             print(f"[Echo LSP] {message}", file=sys.stderr, flush=True)
 
-    def send_response(self, response: Dict[str, Any]) -> None:
-        """Send a JSON-RPC response to the client"""
+    async def send_response(self, response: Dict[str, Any]) -> None:
         content = json.dumps(response)
         message = f"Content-Length: {len(content)}\r\n\r\n{content}"
-        sys.stdout.write(message)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, lambda: sys.stdout.write(message))
         sys.stdout.flush()
 
-    def send_notification(self, method: str, params: Dict[str, Any]) -> None:
-        """Send a notification to the client"""
-        response = {"jsonrpc": "2.0", "method": method, "params": params}
-        self.send_response(response)
+    async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
+        await self.send_response({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params
+        })
 
-    def send_ghost_text(self, uri: str, line: int, text: str) -> None:
-        """Send ghost text notification to the client"""
-        test_text = "Hello world"
-        self.send_notification(
-            "ghostText/virtualText",
-            {
-                "uri": uri,
-                "line": line,
-                "text": f"👻 {test_text}",  # Add ghost emoji for visual indication
-            },
-        )
+    async def send_ghost_text(self, uri: str, line: int, text: str) -> None:
+        await self.send_notification("ghostText/virtualText", {
+            "uri": uri,
+            "line": line,
+            "text": f"👻 {text}",
+        })
 
-    def handle_initialize(self, request: Dict[str, Any]) -> None:
-        """Handle the initialize request"""
+    async def read_message(self) -> Optional[Dict[str, Any]]:
+        content_length = None
+
+        while True:
+            line = (await self.reader.readline()).decode("utf-8").strip()
+            if not line:
+                break
+            match = re.match(r"Content-Length: (\d+)", line)
+            if match:
+                content_length = int(match.group(1))
+
+        if content_length is None:
+            return None
+
+        body = await self.reader.readexactly(content_length)
+        return json.loads(body.decode("utf-8"))
+
+    async def query_external_api(self, input_text: str) -> str:
+        """Simulated async external API call"""
+        await asyncio.sleep(1)  # simulate latency
+        return f"Processed: {input_text[::-1]}"  # reverse the input for demo
+
+    async def handle_initialize(self, request: Dict[str, Any]) -> None:
         capabilities = {
             "hoverProvider": True,
             "textDocumentSync": {
                 "openClose": True,
-                "change": 1,  # Full document sync
+                "change": 1,
                 "save": True,
             },
+            "experimental": {
+                "ghostTextProvider": True
+            }
         }
 
-        response = {
+        await self.send_response({
             "jsonrpc": "2.0",
             "id": request["id"],
             "result": {
                 "capabilities": capabilities,
-                "serverInfo": {"name": "Echo LSP Server", "version": "1.0.0"},
-            },
-        }
-        self.send_response(response)
-        self.log("Server initialized with hover capabilities")
-
-    def handle_initialized(self, request: Dict[str, Any]) -> None:
-        """Handle the initialized notification"""
+                "serverInfo": {"name": "Echo Async LSP", "version": "1.0.0"},
+            }
+        })
         self.initialized = True
-        self.log("Server initialization completed")
+        self.log("Server initialized")
 
-    def handle_text_document_did_open(self, params: Dict[str, Any]) -> None:
-        """Handle document open event"""
-        doc = params["textDocument"]
-        uri = doc["uri"]
-        text = doc["text"]
-        self.document_store[uri] = text.split("\n")
-        self.log(f"Document opened: {uri}")
-
-    def handle_text_document_did_change(self, params: Dict[str, Any]) -> None:
-        """Handle document change event"""
-        uri = params["textDocument"]["uri"]
-        changes = params["contentChanges"]
-
-        # For full document sync, we replace the entire content
-        if changes and "text" in changes[0]:
-            self.document_store[uri] = changes[0]["text"].split("\n")
-            self.log(f"Document updated: {uri}")
-
-    def handle_text_document_did_close(self, params: Dict[str, Any]) -> None:
-        """Handle document close event"""
-        uri = params["textDocument"]["uri"]
-        if uri in self.document_store:
-            del self.document_store[uri]
-        self.log(f"Document closed: {uri}")
-
-    def handle_hover(self, request: Dict[str, Any]) -> None:
-        """Handle hover request - echo the current line"""
+    async def handle_hover(self, request: Dict[str, Any]) -> None:
         params = request["params"]
         uri = params["textDocument"]["uri"]
-        position = params["position"]
-        line_number = position["line"]
+        line_number = params["position"]["line"]
 
-        response = {"jsonrpc": "2.0", "id": request["id"], "result": None}
-
+        result = None
         if uri in self.document_store:
             lines = self.document_store[uri]
             if 0 <= line_number < len(lines):
                 current_line = lines[line_number]
-                hover_content = {
-                    "kind": "markdown",
-                    "value": f"**Echo LSP Server**\n\nCurrent line ({line_number + 1}): `{current_line}`",
-                }
-                response["result"] = {
-                    "contents": hover_content,
+                result = {
+                    "contents": {
+                        "kind": "markdown",
+                        "value": f"**Echo**\n\n`{current_line}`"
+                    },
                     "range": {
                         "start": {"line": line_number, "character": 0},
-                        "end": {"line": line_number, "character": len(current_line)},
-                    },
+                        "end": {"line": line_number, "character": len(current_line)}
+                    }
                 }
-                self.log(f"Hover response for line {line_number + 1}: {current_line}")
-            else:
-                self.log(f"Line {line_number} out of range")
-        else:
-            self.log(f"Document not found: {uri}")
 
-        self.send_response(response)
+        await self.send_response({
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": result
+        })
 
-    def handle_trigger_ghost_text(self, request: Dict[str, Any]) -> None:
-        """Handle custom ghost text trigger request"""
+    async def handle_trigger_ghost_text(self, request: Dict[str, Any]) -> None:
         params = request["params"]
         uri = params["textDocument"]["uri"]
-        position = params["position"]
-        line_number = position["line"]
+        line = params["position"]["line"]
 
-        response = {"jsonrpc": "2.0", "id": request["id"], "result": None}
+        await self.send_response({
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"ack": True}
+        })
 
-        if uri in self.document_store:
-            lines = self.document_store[uri]
-            if 0 <= line_number < len(lines):
-                current_line = lines[line_number]
+        if uri not in self.document_store:
+            self.log(f"Ghost request: doc not found {uri}")
+            return
 
-                # Send ghost text notification
-                self.send_ghost_text(uri, line_number, current_line)
+        lines = self.document_store[uri]
+        if not (0 <= line < len(lines)):
+            self.log(f"Ghost request: line out of range {line}")
+            return
 
-                # Send success response
-                response["result"] = {"success": True}
-                self.log(
-                    f"Ghost text triggered for line {line_number + 1}: {current_line}"
-                )
-            else:
-                response["error"] = {
-                    "code": -32602,
-                    "message": f"Line {line_number} out of range",
-                }
-                self.log(f"Ghost text trigger failed: Line {line_number} out of range")
-        else:
-            response["error"] = {
-                "code": -32602,
-                "message": f"Document not found: {uri}",
-            }
-            self.log(f"Ghost text trigger failed: Document not found: {uri}")
-
-        self.send_response(response)
-
-    def handle_shutdown(self, request: Dict[str, Any]) -> None:
-        """Handle shutdown request"""
-        response = {"jsonrpc": "2.0", "id": request["id"], "result": None}
-        self.send_response(response)
-        self.log("Shutdown request received")
-
-    def handle_exit(self, request: Dict[str, Any]) -> None:
-        """Handle exit notification"""
-        self.running = False
-        self.log("Exit notification received")
-
-    def parse_header(self, line: str) -> Optional[int]:
-        """Parse Content-Length from header"""
-        match = re.match(r"Content-Length: (\d+)", line)
-        return int(match.group(1)) if match else None
-
-    def read_message(self) -> Optional[Dict[str, Any]]:
-        """Read a JSON-RPC message from stdin"""
+        original = lines[line]
         try:
-            # Read headers
-            content_length = None
-            while True:
-                line = sys.stdin.buffer.readline().decode("utf-8")
-                if not line:
-                    return None
+            processed = await self.query_external_api(original)
+            await self.send_ghost_text(uri, line, processed)
+            self.log(f"Ghost text sent for line {line + 1}")
+        except Exception as e:
+            self.log(f"Ghost text error: {e}", "ERROR")
 
-                line = line.strip()
-                if not line:  # Empty line indicates end of headers
-                    break
-
-                length = self.parse_header(line)
-                if length is not None:
-                    content_length = length
-
-            if content_length is None:
-                self.log("No Content-Length header found")
-                return None
-
-            # Read exactly content_length bytes from buffer
-            content_bytes = sys.stdin.buffer.read(content_length)
-            if len(content_bytes) != content_length:
-                self.log(f"Expected {content_length} bytes, got {len(content_bytes)}")
-                return None
-
-            # Decode to string
-            content = content_bytes.decode("utf-8")
-
-            self.log(
-                f"Received message length: {len(content)} chars, {len(content_bytes)} bytes"
-            )
-
-            # Parse JSON
-            message = json.loads(content)
-            return message
-
-        except (json.JSONDecodeError, ValueError) as e:
-            self.log(f"Error parsing message: {e}")
-            self.log(
-                f"Content length: {content_length if 'content_length' in locals() else 'Unknown'}"
-            )
-            if "content" in locals():
-                self.log(f"Content preview: {repr(content[:200])}")
-                self.log(f"Content end: {repr(content[-50:])}")
-            return None
-        except UnicodeDecodeError as e:
-            self.log(f"Unicode decode error: {e}")
-            return None
-        except EOFError:
-            self.log("EOF reached")
-            return None
-
-    def handle_request(self, request: Dict[str, Any]) -> None:
-        """Handle incoming JSON-RPC request"""
-        method = request.get("method")
-        self.log(f"Method: {method}")
-
-        if method == "initialize":
-            self.handle_initialize(request)
-        elif method == "initialized":
-            self.handle_initialized(request)
+    async def handle_notification(self, method: str, params: Dict[str, Any]) -> None:
+        if method == "initialized":
+            self.initialized = True
         elif method == "textDocument/didOpen":
-            self.handle_text_document_did_open(request["params"])
+            uri = params["textDocument"]["uri"]
+            text = params["textDocument"]["text"]
+            self.document_store[uri] = text.splitlines()
         elif method == "textDocument/didChange":
-            self.handle_text_document_did_change(request["params"])
+            uri = params["textDocument"]["uri"]
+            text = params["contentChanges"][0]["text"]
+            self.document_store[uri] = text.splitlines()
         elif method == "textDocument/didClose":
-            self.handle_text_document_did_close(request["params"])
-        elif method == "textDocument/hover":
-            self.handle_hover(request)
-        elif method == "custom/triggerGhostText":
-            self.handle_trigger_ghost_text(request)
-        elif method == "shutdown":
-            self.handle_shutdown(request)
-        elif method == "exit":
-            self.handle_exit(request)
-        else:
-            # Send method not found error for unhandled requests with IDs
-            if "id" in request:
-                error_response = {
-                    "jsonrpc": "2.0",
-                    "id": request["id"],
-                    "error": {
-                        "code": -32601,
-                        "message": "Method not found",
-                        "data": method,
-                    },
-                }
-                self.send_response(error_response)
+            uri = params["textDocument"]["uri"]
+            if uri in self.document_store:
+                del self.document_store[uri]
 
-    def run(self) -> None:
-        """Main server loop"""
-        self.log("Echo LSP Server starting...")
+    async def dispatch_message(self, message: Dict[str, Any]) -> None:
+        try:
+            method = message.get("method")
+            if method == "initialize":
+                await self.handle_initialize(message)
+            elif method == "textDocument/hover":
+                await self.handle_hover(message)
+            elif method == "custom/triggerGhostText":
+                await self.handle_trigger_ghost_text(message)
+            elif method in {"initialized", "textDocument/didOpen", "textDocument/didChange", "textDocument/didClose"}:
+                await self.handle_notification(method, message.get("params", {}))
+            elif method == "shutdown":
+                await self.send_response({
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "result": None
+                })
+            elif method == "exit":
+                self.running = False
+        except Exception as e:
+            self.log(f"Dispatch error: {e}", "ERROR")
+            if "id" in message:
+                await self.send_response({
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "error": {
+                        "code": -32603,
+                        "message": "Internal server error",
+                        "data": str(e),
+                    },
+                })
+
+    async def run(self) -> None:
+        self.log("Async Echo LSP Server starting...")
+
+        self.reader = asyncio.StreamReader()
+        protocol = asyncio.StreamReaderProtocol(self.reader)
+        await asyncio.get_event_loop().connect_read_pipe(lambda: protocol, sys.stdin)
 
         while self.running:
             try:
-                message = self.read_message()
+                message = await self.read_message()
                 if message is None:
                     break
-
-                self.handle_request(message)
-
-            except KeyboardInterrupt:
-                break
+                asyncio.create_task(self.dispatch_message(message))
             except Exception as e:
-                self.log(f"Unexpected error: {e}", "ERROR")
-                break
+                self.log(f"Main loop error: {e}", "ERROR")
 
-        self.log("Echo LSP Server shutting down...")
+        self.log("Async Echo LSP Server shutting down...")
 
 
 if __name__ == "__main__":
-    server = EchoLSPServer()
-    server.run()
+    asyncio.run(EchoLSPServer().run())
