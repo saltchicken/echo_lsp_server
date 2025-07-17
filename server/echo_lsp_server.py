@@ -210,9 +210,10 @@ class EchoLSPServer:
             self.document_store[uri] = text.splitlines()
 
             # Optionally cancel existing tasks for this URI on change
-            cancelled = self.cancel_tasks_for_uri(uri)
+            # TODO: Check this out
+            cancelled = self.cancel_all_tasks()
             if cancelled > 0:
-                self.log(f"Cancelled {cancelled} tasks for changed document: {uri}")
+                self.log("This happened")
 
         elif method == "textDocument/didClose":
             uri = params["textDocument"]["uri"]
@@ -220,9 +221,9 @@ class EchoLSPServer:
                 del self.document_store[uri]
 
             # Cancel all tasks for the closed document
-            cancelled = self.cancel_tasks_for_uri(uri)
-            if cancelled > 0:
-                self.log(f"Cancelled {cancelled} tasks for closed document: {uri}")
+            # cancelled = self.cancel_tasks_for_uri(uri)
+            # if cancelled > 0:
+            #     self.log(f"Cancelled {cancelled} tasks for closed document: {uri}")
 
     async def dispatch_message(self, message: Dict[str, Any]) -> None:
         try:
@@ -249,9 +250,9 @@ class EchoLSPServer:
             elif method == "shutdown":
                 # Cancel all tasks on shutdown
                 self.cancel_all_tasks()
-                await self.send_response(
-                    {"jsonrpc": "2.0", "id": message["id"], "result": None}
-                )
+                # await self.send_response(
+                #     {"jsonrpc": "2.0", "id": message["id"], "result": None}
+                # )
             elif method == "exit":
                 self.running = False
         except Exception as e:
