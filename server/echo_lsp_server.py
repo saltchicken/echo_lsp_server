@@ -193,7 +193,7 @@ class EchoLSPServer:
                 await self.handle_trigger_ghost_text(message)
             elif method in {"initialized", "textDocument/didOpen", "textDocument/didChange", "textDocument/didClose"}:
                 await self.handle_notification(method, message.get("params", {}))
-            elif method == "$/cancelRequest":
+            elif method == "$/cancelGhostText":
                 await self.handle_cancel_request(message)
             elif method == "shutdown":
                 await self.send_response({
