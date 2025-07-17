@@ -57,16 +57,6 @@ class EchoLSPServer:
 
         return cancelled_count
 
-    # def get_task_stats(self) -> Dict[str, Any]:
-    #     """Get current task statistics"""
-    #     return {
-    #         "total_active_tasks": len(self.active_tasks),
-    #         "tasks_by_uri": {uri: len(tasks) for uri, tasks in self.uri_tasks.items()},
-    #         "request_tasks": len(self.request_tasks),
-    #         "running_tasks": len([t for t in self.active_tasks if not t.done()]),
-    #         "completed_tasks": len([t for t in self.active_tasks if t.done()]),
-    #     }
-
     async def send_response(self, response: Dict[str, Any]) -> None:
         content = json.dumps(response)
         message = f"Content-Length: {len(content)}\r\n\r\n{content}"
