@@ -172,6 +172,10 @@ class EchoLSPServer:
             self.log(f"Ghost request: line out of range {line}")
             return
 
+        if len(self.active_tasks) > 0:
+            self.log("There is already an active task. Disregarding")
+            return
+
         original = lines[line]
 
         # Create and track the task
