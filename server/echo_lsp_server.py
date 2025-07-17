@@ -1,213 +1,124 @@
 import asyncio
-import aiohttp
 import json
-import os
 import re
 import sys
-from datetime import datetime
-from typing import Dict, Any, Optional, List
-
+import uuid
+from typing import Any, Dict, Optional
 
 class EchoLSPServer:
     def __init__(self):
         self.running = True
-        self.initialized = False
-        self.document_store: Dict[str, List[str]] = {}
-        self.reader: Optional[asyncio.StreamReader] = None
+        self.reader = None
+        self.tasks = {}  # Maps request ID or URI to task
 
-        log_dir = os.path.expanduser("~/.cache/nvim")
-        os.makedirs(log_dir, exist_ok=True)
-        self.log_file = os.path.join(log_dir, "echo_lsp_async.log")
+    def log(self, message: str, level: str = "INFO"):
+        print(f"[{level}] {message}", file=sys.stderr)
 
-        with open(self.log_file, "w") as f:
-            f.write(f"=== Echo LSP Async Server Started at {datetime.now()} ===\n")
+    async def read_message(self) -> Optional[Dict[str, Any]]:
+        headers = {}
+        while True:
+            line = await asyncio.get_event_loop().run_in_executor(None, sys.stdin.readline)
+            if line == "\r\n" or line == "\n" or line == "":
+                break
+            match = re.match(r"([\w\-]+): (.+)", line)
+            if match:
+                headers[match.group(1)] = match.group(2)
 
-    def log(self, message: str, level: str = "INFO") -> None:
-        try:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            log_message = f"[{timestamp}] [{level}] {message}\n"
-            with open(self.log_file, "a") as f:
-                f.write(log_message)
-        except Exception:
-            print(f"[Echo LSP] {message}", file=sys.stderr, flush=True)
+        content_length = int(headers.get("Content-Length", 0))
+        if content_length == 0:
+            return None
+        content = await asyncio.get_event_loop().run_in_executor(None, sys.stdin.read, content_length)
+        return json.loads(content)
 
     async def send_response(self, response: Dict[str, Any]) -> None:
         content = json.dumps(response)
         message = f"Content-Length: {len(content)}\r\n\r\n{content}"
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, lambda: sys.stdout.write(message))
+        await asyncio.get_event_loop().run_in_executor(None, sys.stdout.write, message)
         sys.stdout.flush()
 
     async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
-        await self.send_response({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params
-        })
+        content = json.dumps({"jsonrpc": "2.0", "method": method, "params": params})
+        message = f"Content-Length: {len(content)}\r\n\r\n{content}"
+        await asyncio.get_event_loop().run_in_executor(None, sys.stdout.write, message)
+        sys.stdout.flush()
 
-    async def send_ghost_text(self, uri: str, line: int, text: str) -> None:
-        await self.send_notification("ghostText/virtualText", {
-            "uri": uri,
-            "line": line,
-            "text": f"👻 {text}",
-        })
-
-    async def read_message(self) -> Optional[Dict[str, Any]]:
-        content_length = None
-
-        while True:
-            line = (await self.reader.readline()).decode("utf-8").strip()
-            if not line:
-                break
-            match = re.match(r"Content-Length: (\d+)", line)
-            if match:
-                content_length = int(match.group(1))
-
-        if content_length is None:
-            return None
-
-        body = await self.reader.readexactly(content_length)
-        return json.loads(body.decode("utf-8"))
-
-    async def query_external_api(self, input_text: str) -> str:
-        """Simulated async external API call"""
-        await asyncio.sleep(1)  # simulate latency
-        return f"Processed: {input_text[::-1]}"  # reverse the input for demo
-
-    async def handle_initialize(self, request: Dict[str, Any]) -> None:
-        capabilities = {
-            "hoverProvider": True,
-            "textDocumentSync": {
-                "openClose": True,
-                "change": 1,
-                "save": True,
-            },
-            "experimental": {
-                "ghostTextProvider": True
+    async def handle_initialize(self, message: Dict[str, Any]):
+        result = {
+            "capabilities": {
+                "textDocumentSync": 1,
             }
         }
-
         await self.send_response({
             "jsonrpc": "2.0",
-            "id": request["id"],
-            "result": {
-                "capabilities": capabilities,
-                "serverInfo": {"name": "Echo Async LSP", "version": "1.0.0"},
-            }
-        })
-        self.initialized = True
-        self.log("Server initialized")
-
-    async def handle_hover(self, request: Dict[str, Any]) -> None:
-        params = request["params"]
-        uri = params["textDocument"]["uri"]
-        line_number = params["position"]["line"]
-
-        result = None
-        if uri in self.document_store:
-            lines = self.document_store[uri]
-            if 0 <= line_number < len(lines):
-                current_line = lines[line_number]
-                result = {
-                    "contents": {
-                        "kind": "markdown",
-                        "value": f"**Echo**\n\n`{current_line}`"
-                    },
-                    "range": {
-                        "start": {"line": line_number, "character": 0},
-                        "end": {"line": line_number, "character": len(current_line)}
-                    }
-                }
-
-        await self.send_response({
-            "jsonrpc": "2.0",
-            "id": request["id"],
-            "result": result
+            "id": message["id"],
+            "result": result,
         })
 
-    async def handle_trigger_ghost_text(self, request: Dict[str, Any]) -> None:
-        params = request["params"]
-        uri = params["textDocument"]["uri"]
-        line = params["position"]["line"]
+    async def handle_trigger_ghost_text(self, message: Dict[str, Any]):
+        uri = message["params"]["textDocument"]["uri"]
+        request_id = str(message.get("id", uuid.uuid4()))
+        self.log(f"Ghost request triggered for {uri} [{request_id}]")
 
-        await self.send_response({
-            "jsonrpc": "2.0",
-            "id": request["id"],
-            "result": {"ack": True}
-        })
+        # Cancel previous if exists
+        if uri in self.tasks:
+            self.tasks[uri].cancel()
 
-        if uri not in self.document_store:
-            self.log(f"Ghost request: doc not found {uri}")
-            return
+        # Start a new ghost generation task
+        task = asyncio.create_task(self.do_ghost_text(uri, message))
+        self.tasks[uri] = task
 
-        lines = self.document_store[uri]
-        if not (0 <= line < len(lines)):
-            self.log(f"Ghost request: line out of range {line}")
-            return
-
-        original = lines[line]
+    async def do_ghost_text(self, uri: str, message: Dict[str, Any]):
+        request_id = message.get("id")
         try:
-            processed = await self.query_external_api(original)
-            await self.send_ghost_text(uri, line, processed)
-            self.log(f"Ghost text sent for line {line + 1}")
-        except Exception as e:
-            self.log(f"Ghost text error: {e}", "ERROR")
-
-    async def handle_notification(self, method: str, params: Dict[str, Any]) -> None:
-        if method == "initialized":
-            self.initialized = True
-        elif method == "textDocument/didOpen":
-            uri = params["textDocument"]["uri"]
-            text = params["textDocument"]["text"]
-            self.document_store[uri] = text.splitlines()
-        elif method == "textDocument/didChange":
-            uri = params["textDocument"]["uri"]
-            text = params["contentChanges"][0]["text"]
-            self.document_store[uri] = text.splitlines()
-        elif method == "textDocument/didClose":
-            uri = params["textDocument"]["uri"]
-            if uri in self.document_store:
-                del self.document_store[uri]
-
-    async def dispatch_message(self, message: Dict[str, Any]) -> None:
-        try:
-            method = message.get("method")
-            if method == "initialize":
-                await self.handle_initialize(message)
-            elif method == "textDocument/hover":
-                await self.handle_hover(message)
-            elif method == "custom/triggerGhostText":
-                await self.handle_trigger_ghost_text(message)
-            elif method in {"initialized", "textDocument/didOpen", "textDocument/didChange", "textDocument/didClose"}:
-                await self.handle_notification(method, message.get("params", {}))
-            elif method == "shutdown":
+            await asyncio.sleep(3)  # Simulate slow API
+            text = "🌟 suggested code"
+            await self.send_response({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "text": text,
+                },
+            })
+            self.log(f"Returned ghost text for {uri}")
+        except asyncio.CancelledError:
+            self.log(f"Ghost task cancelled for {uri}", "WARN")
+            if request_id:
                 await self.send_response({
                     "jsonrpc": "2.0",
-                    "id": message["id"],
-                    "result": None
-                })
-            elif method == "exit":
-                self.running = False
-        except Exception as e:
-            self.log(f"Dispatch error: {e}", "ERROR")
-            if "id" in message:
-                await self.send_response({
-                    "jsonrpc": "2.0",
-                    "id": message["id"],
+                    "id": request_id,
                     "error": {
-                        "code": -32603,
-                        "message": "Internal server error",
-                        "data": str(e),
+                        "code": -32800,
+                        "message": "Request cancelled",
                     },
                 })
 
-    async def run(self) -> None:
-        self.log("Async Echo LSP Server starting...")
+    async def handle_did_change(self, message: Dict[str, Any]):
+        uri = message["params"]["textDocument"]["uri"]
+        if uri in self.tasks:
+            self.tasks[uri].cancel()
+            self.log(f"Cancelled ghost text due to didChange on {uri}")
 
-        self.reader = asyncio.StreamReader()
-        protocol = asyncio.StreamReaderProtocol(self.reader)
-        await asyncio.get_event_loop().connect_read_pipe(lambda: protocol, sys.stdin)
+    async def handle_cancel_request(self, message: Dict[str, Any]):
+        id_to_cancel = message.get("params", {}).get("id")
+        for uri, task in self.tasks.items():
+            if str(id_to_cancel) in str(task):  # crude match
+                task.cancel()
+                self.log(f"Cancelled task {id_to_cancel} for {uri}")
+                break
 
+    async def dispatch_message(self, message: Dict[str, Any]):
+        method = message.get("method")
+        if method == "initialize":
+            await self.handle_initialize(message)
+        elif method == "custom/triggerGhostText":
+            await self.handle_trigger_ghost_text(message)
+        elif method == "textDocument/didChange":
+            await self.handle_did_change(message)
+        elif method == "$/cancelRequest":
+            await self.handle_cancel_request(message)
+
+    async def run(self):
+        self.log("Echo LSP Server starting...")
         while self.running:
             try:
                 message = await self.read_message()
@@ -215,9 +126,7 @@ class EchoLSPServer:
                     break
                 asyncio.create_task(self.dispatch_message(message))
             except Exception as e:
-                self.log(f"Main loop error: {e}", "ERROR")
-
-        self.log("Async Echo LSP Server shutting down...")
+                self.log(f"Error: {e}", "ERROR")
 
 
 if __name__ == "__main__":
