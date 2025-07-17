@@ -153,6 +153,15 @@ class EchoLSPServer:
         except Exception as e:
             self.log(f"Ghost text error: {e}", "ERROR")
 
+    async def handle_cancel_request(self, message: Dict[str, Any]):
+        self.log("Cancel request received")
+        # id_to_cancel = message.get("params", {}).get("id")
+        # for uri, task in self.tasks.items():
+        #     if str(id_to_cancel) in str(task):  # crude match
+        #         task.cancel()
+        #         self.log(f"Cancelled task {id_to_cancel} for {uri}")
+        #         break
+
     async def handle_notification(self, method: str, params: Dict[str, Any]) -> None:
         if method == "initialized":
             self.initialized = True
@@ -180,6 +189,8 @@ class EchoLSPServer:
                 await self.handle_trigger_ghost_text(message)
             elif method in {"initialized", "textDocument/didOpen", "textDocument/didChange", "textDocument/didClose"}:
                 await self.handle_notification(method, message.get("params", {}))
+            elif method == "$/cancelRequest":
+                await self.handle_cancel_request(message)
             elif method == "shutdown":
                 await self.send_response({
                     "jsonrpc": "2.0",
