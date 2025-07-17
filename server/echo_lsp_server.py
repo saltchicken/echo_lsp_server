@@ -51,12 +51,13 @@ class EchoLSPServer:
 
     def send_ghost_text(self, uri: str, line: int, text: str) -> None:
         """Send ghost text notification to the client"""
+        test_text = "Hello world"
         self.send_notification(
             "ghostText/virtualText",
             {
                 "uri": uri,
                 "line": line,
-                "text": f"👻 {text}",  # Add ghost emoji for visual indication
+                "text": f"👻 {test_text}",  # Add ghost emoji for visual indication
             },
         )
 
