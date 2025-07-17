@@ -167,8 +167,6 @@ class EchoLSPServer:
             self.log(f"Ghost request: doc not found {uri}")
             return
 
-        self.log(f"URI: {uri}")
-
         lines = self.document_store[uri]
         if not (0 <= line < len(lines)):
             self.log(f"Ghost request: line out of range {line}")
