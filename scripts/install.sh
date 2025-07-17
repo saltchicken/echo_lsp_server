@@ -11,4 +11,5 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 
 # Install dependencies
-"$VENV_DIR/bin/pip" install -r "$SERVER_DIR/requirements.txt"
+source "$VENV_DIR/bin/activate"
+uv pip install -r "$SERVER_DIR/requirements.txt"
