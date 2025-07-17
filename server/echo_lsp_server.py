@@ -14,17 +14,7 @@ class EchoLSPServer:
         self.initialized = False
         self.document_store: Dict[str, List[str]] = {}
         self.reader: Optional[asyncio.StreamReader] = None
-
-        # Task tracking - choose one approach:
-
-        # Approach 1: Track all active tasks
         self.active_tasks: Set[asyncio.Task] = set()
-
-        # Approach 2: Track tasks by URI (for per-document cancellation)
-        self.uri_tasks: Dict[str, Set[asyncio.Task]] = {}
-
-        # Approach 3: Track tasks by request ID (for LSP cancellation)
-        self.request_tasks: Dict[str, asyncio.Task] = {}
 
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
@@ -42,64 +32,18 @@ class EchoLSPServer:
         except Exception:
             print(f"[Echo LSP] {message}", file=sys.stderr, flush=True)
 
-    def add_task(
-        self, task: asyncio.Task, uri: str = None, request_id: str = None
-    ) -> None:
+    def add_task(self, task: asyncio.Task) -> None:
         """Add a task to tracking collections"""
-        # Track in global set
         self.active_tasks.add(task)
 
-        # Track by URI if provided
-        if uri:
-            if uri not in self.uri_tasks:
-                self.uri_tasks[uri] = set()
-            self.uri_tasks[uri].add(task)
-
-        # Track by request ID if provided
-        if request_id:
-            self.request_tasks[request_id] = task
-
-        # Clean up when task completes
         def cleanup_task(task_ref):
             task_obj = task_ref()
             if task_obj:
                 self.active_tasks.discard(task_obj)
-                if uri and uri in self.uri_tasks:
-                    self.uri_tasks[uri].discard(task_obj)
-                    if not self.uri_tasks[uri]:
-                        del self.uri_tasks[uri]
-                if request_id and request_id in self.request_tasks:
-                    del self.request_tasks[request_id]
 
         # Use weak reference to avoid circular reference
         task_ref = weakref.ref(task, cleanup_task)
         task.add_done_callback(lambda t: cleanup_task(task_ref))
-
-    def cancel_tasks_for_uri(self, uri: str) -> int:
-        """Cancel all tasks for a specific URI"""
-        if uri not in self.uri_tasks:
-            return 0
-
-        tasks_to_cancel = list(self.uri_tasks[uri])
-        cancelled_count = 0
-
-        for task in tasks_to_cancel:
-            if not task.done():
-                task.cancel()
-                cancelled_count += 1
-                self.log(f"Cancelled task for URI: {uri}")
-
-        return cancelled_count
-
-    def cancel_task_by_request_id(self, request_id: str) -> bool:
-        """Cancel a specific task by request ID"""
-        if request_id in self.request_tasks:
-            task = self.request_tasks[request_id]
-            if not task.done():
-                task.cancel()
-                self.log(f"Cancelled task for request ID: {request_id}")
-                return True
-        return False
 
     def cancel_all_tasks(self) -> int:
         """Cancel all active tasks"""
@@ -114,15 +58,15 @@ class EchoLSPServer:
         self.log(f"Cancelled {cancelled_count} tasks")
         return cancelled_count
 
-    def get_task_stats(self) -> Dict[str, Any]:
-        """Get current task statistics"""
-        return {
-            "total_active_tasks": len(self.active_tasks),
-            "tasks_by_uri": {uri: len(tasks) for uri, tasks in self.uri_tasks.items()},
-            "request_tasks": len(self.request_tasks),
-            "running_tasks": len([t for t in self.active_tasks if not t.done()]),
-            "completed_tasks": len([t for t in self.active_tasks if t.done()]),
-        }
+    # def get_task_stats(self) -> Dict[str, Any]:
+    #     """Get current task statistics"""
+    #     return {
+    #         "total_active_tasks": len(self.active_tasks),
+    #         "tasks_by_uri": {uri: len(tasks) for uri, tasks in self.uri_tasks.items()},
+    #         "request_tasks": len(self.request_tasks),
+    #         "running_tasks": len([t for t in self.active_tasks if not t.done()]),
+    #         "completed_tasks": len([t for t in self.active_tasks if t.done()]),
+    #     }
 
     async def send_response(self, response: Dict[str, Any]) -> None:
         content = json.dumps(response)
@@ -260,19 +204,9 @@ class EchoLSPServer:
     async def handle_cancel_request(self, message: Dict[str, Any]):
         """Handle LSP cancel request"""
         self.log("Cancel request received")
-        params = message.get("params", {})
-        request_id = params.get("id")
-
-        if request_id:
-            # Try to cancel by request ID
-            if self.cancel_task_by_request_id(str(request_id)):
-                self.log(f"Cancelled task for request ID: {request_id}")
-            else:
-                self.log(f"No task found for request ID: {request_id}")
-        else:
-            # Cancel all tasks if no specific ID
-            cancelled = self.cancel_all_tasks()
-            self.log(f"Cancelled {cancelled} tasks")
+        # params = message.get("params", {})
+        cancelled = self.cancel_all_tasks()
+        self.log(f"Cancelled {cancelled} tasks")
 
     async def handle_notification(self, method: str, params: Dict[str, Any]) -> None:
         if method == "initialized":
