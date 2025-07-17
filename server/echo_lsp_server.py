@@ -181,6 +181,10 @@ class EchoLSPServer:
     async def dispatch_message(self, message: Dict[str, Any]) -> None:
         try:
             method = message.get("method")
+            if method:
+                self.log(method)
+            else:
+                self.log("Method was missing", "ERROR")
             if method == "initialize":
                 await self.handle_initialize(message)
             elif method == "textDocument/hover":
