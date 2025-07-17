@@ -11,5 +11,4 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 
 # Install dependencies
-# "$VENV_DIR/bin/pip" install -r "$SERVER_DIR/requirements.txt"
-
+"$VENV_DIR/bin/pip" install -r "$SERVER_DIR/requirements.txt"

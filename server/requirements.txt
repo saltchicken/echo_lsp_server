@@ -1,1 +1,2 @@
-pygls
+asyncio
+aiohttp
