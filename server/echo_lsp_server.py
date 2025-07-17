@@ -51,16 +51,14 @@ class EchoLSPServer:
 
     def send_ghost_text(self, uri: str, line: int, text: str) -> None:
         """Send ghost text notification to the client"""
-        ghost_text = f"👻 {text}"
-        notification = {
-            "uri": uri,
-            "line": line,
-            "text": ghost_text,
-        }
-
-        self.log(f"Sending ghost text notification: {notification}")
-        self.send_notification("ghostText/virtualText", notification)
-        self.log("Ghost text notification sent successfully")
+        self.send_notification(
+            "ghostText/virtualText",
+            {
+                "uri": uri,
+                "line": line,
+                "text": f"👻 {text}",  # Add ghost emoji for visual indication
+            },
+        )
 
     def handle_initialize(self, request: Dict[str, Any]) -> None:
         """Handle the initialize request"""
