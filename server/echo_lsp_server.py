@@ -17,7 +17,7 @@ class EchoLSPServer:
 
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
-        self.log_file = os.path.join(log_dir, "echo_lsp_async.log")
+        self.log_file = os.path.join(log_dir, "echo_lsp.log")
 
         with open(self.log_file, "w") as f:
             f.write(f"=== Echo LSP Async Server Started at {datetime.now()} ===\n")
