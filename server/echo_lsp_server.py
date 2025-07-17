@@ -158,8 +158,9 @@ class EchoLSPServer:
         line = params["position"]["line"]
         request_id = str(request["id"])
 
+        # TODO: I don't believe this is needed
         await self.send_response(
-            {"jsonrpc": "2.0", "id": request["id"], "result": {"ack": False}}
+            {"jsonrpc": "2.0", "id": request["id"], "result": {"ack": True}}
         )
 
         if uri not in self.document_store:
