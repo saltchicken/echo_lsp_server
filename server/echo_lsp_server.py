@@ -55,7 +55,6 @@ class EchoLSPServer:
                 task.cancel()
                 cancelled_count += 1
 
-        self.log(f"Cancelled {cancelled_count} tasks")
         return cancelled_count
 
     # def get_task_stats(self) -> Dict[str, Any]:
@@ -293,19 +292,7 @@ class EchoLSPServer:
                 if message is None:
                     break
 
-                # Create task for message handling (not tracked since it's internal)
                 asyncio.create_task(self.dispatch_message(message))
-
-                # Periodically log task stats (optional)
-                if hasattr(self, "_last_stats_log"):
-                    if (
-                        datetime.now().timestamp() - self._last_stats_log > 30
-                    ):  # every 30 seconds
-                        stats = self.get_task_stats()
-                        self.log(f"Task stats: {stats}")
-                        self._last_stats_log = datetime.now().timestamp()
-                else:
-                    self._last_stats_log = datetime.now().timestamp()
 
             except Exception as e:
                 self.log(f"Main loop error: {e}", "ERROR")
