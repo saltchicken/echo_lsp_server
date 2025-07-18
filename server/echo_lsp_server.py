@@ -234,7 +234,7 @@ class EchoLSPServer:
                     return
                 processed = remove_code_fence(processed)
                 processed = trim_completion(original, processed)
-                processed.split("\n")[0]
+                processed = processed.split("\n")[0]
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
