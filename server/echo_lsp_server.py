@@ -6,7 +6,8 @@ import sys
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Set
 import weakref
-import requests
+
+# import requests
 import httpx
 
 
@@ -210,6 +211,9 @@ class EchoLSPServer:
         lines_with_cursor = lines.copy()
         lines_with_cursor[line] = line_with_cursor
 
+        def remove_code_fence(s: str) -> str:
+            return re.sub(r"^```(?:\w+)?\n?|```$", "", s.strip(), flags=re.MULTILINE)
+
         def trim_completion(original_line: str, completion: str) -> str:
             completion = completion.strip()
             original_line = original_line.strip()
@@ -228,7 +232,9 @@ class EchoLSPServer:
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
+                processed = remove_code_fence(processed)
                 processed = trim_completion(original, processed)
+                processed.split("\n")[0]
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
