@@ -102,7 +102,9 @@ class EchoLSPServer:
             payload = {
                 "prompt": "\n".join(lines_with_cursor),
                 "system_message": (
-                    "You are a coding assistant that helps complete lines of code based on the entire file context. Given the full contents of a source file with a cursor marker, return only the code that should appear at the cursor location."
+                    "You are a coding assistant that helps complete lines of code based on the entire file context.",
+                    "Given the full contents of a source file with a cursor marker, return only the code that should appear at <|cursor|>.",
+                    "Do not add anything else",
                 ),
                 "temperature": 0.8,
                 "max_tokens": 100,
