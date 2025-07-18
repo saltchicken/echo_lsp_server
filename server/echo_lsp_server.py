@@ -96,16 +96,13 @@ class EchoLSPServer:
         body = await self.reader.readexactly(content_length)
         return json.loads(body.decode("utf-8"))
 
-    async def query_external_api(
-        self, file_context: str, input_text: str
-    ) -> str | bool:
+    async def query_external_api(self, lines_with_cursor: str) -> str | bool:
         """Query external LLM API asynchronously using httpx. Returns False on failure."""
         try:
             payload = {
-                "prompt": f"<file_context>{'\n'.join(file_context)}</file_context>\n<current_line>{input_text}</current_line>",
+                "prompt": f"{'\n'.join(lines_with_cursor)}",
                 "system_message": (
-                    "You are a Python code assistant. Complete the current line of code using only what would naturally follow from the given context. "
-                    "Do not return comments or explanations."
+                    "You are a coding assistant that helps complete lines of code based on the entire file context. Given the full contents of a source file with a cursor marker, return only the code that should appear at the cursor location."
                 ),
                 "temperature": 0.8,
                 "max_tokens": 100,
@@ -180,7 +177,8 @@ class EchoLSPServer:
         params = request["params"]
         uri = params["textDocument"]["uri"]
         line = params["position"]["line"]
-        request_id = str(request["id"])
+        character = params["position"]["character"]
+        # request_id = str(request["id"])
 
         # TODO: I don't believe this is needed
         await self.send_response(
@@ -201,11 +199,19 @@ class EchoLSPServer:
             return
 
         original = lines[line]
+        if not (0 <= character <= len(original)):
+            self.log(f"Ghost request: character position out of range {character}")
+            return
+
+        line_with_cursor = original[:character] + "<|cursor|>" + original[character:]
+
+        lines_with_cursor = lines.copy()
+        lines_with_cursor[line] = line_with_cursor
 
         # Create and track the task
         async def ghost_text_task():
             try:
-                processed = await self.query_external_api(lines, original)
+                processed = await self.query_external_api(lines_with_cursor)
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
