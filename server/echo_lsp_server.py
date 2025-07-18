@@ -110,9 +110,10 @@ class EchoLSPServer:
                 "max_tokens": 100,
             }
 
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient() as client:
                 response = await client.post("http://main:8000/generate", json=payload)
                 response.raise_for_status()
+                self.log(response)
 
                 result = response.json()
                 return result.get("text", "") or False
