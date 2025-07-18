@@ -75,7 +75,7 @@ class EchoLSPServer:
             {
                 "uri": uri,
                 "line": line,
-                "text": f"👻 {text}",
+                "text": text,
             },
         )
 
@@ -96,11 +96,13 @@ class EchoLSPServer:
         body = await self.reader.readexactly(content_length)
         return json.loads(body.decode("utf-8"))
 
-    async def query_external_api(self, input_text: str) -> str | bool:
+    async def query_external_api(
+        self, file_context: str, input_text: str
+    ) -> str | bool:
         """Query external LLM API asynchronously using httpx. Returns False on failure."""
         try:
             payload = {
-                "prompt": input_text,
+                "prompt": f"<file_context>{file_context}</file_context>\n<current_line>{input_text}</current_line>",
                 "system_message": (
                     "You are a Python code assistant. Complete the current line of code using only what would naturally follow from the given context. "
                     "Do not return comments or explanations."
@@ -177,7 +179,6 @@ class EchoLSPServer:
     async def handle_trigger_ghost_text(self, request: Dict[str, Any]) -> None:
         params = request["params"]
         uri = params["textDocument"]["uri"]
-        self.log(f"URI: {uri}")
         line = params["position"]["line"]
         request_id = str(request["id"])
 
@@ -204,7 +205,7 @@ class EchoLSPServer:
         # Create and track the task
         async def ghost_text_task():
             try:
-                processed = await self.query_external_api(original)
+                processed = await self.query_external_api(lines, original)
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
