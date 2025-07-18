@@ -113,7 +113,7 @@ class EchoLSPServer:
             async with httpx.AsyncClient() as client:
                 response = await client.post("http://main:8000/generate", json=payload)
                 response.raise_for_status()
-                self.log(response)
+                self.log(response.text)
 
                 result = response.json()
                 return result.get("text", "") or False
