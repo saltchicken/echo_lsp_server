@@ -177,6 +177,7 @@ class EchoLSPServer:
     async def handle_trigger_ghost_text(self, request: Dict[str, Any]) -> None:
         params = request["params"]
         uri = params["textDocument"]["uri"]
+        self.log(f"URI: {uri}")
         line = params["position"]["line"]
         request_id = str(request["id"])
 
