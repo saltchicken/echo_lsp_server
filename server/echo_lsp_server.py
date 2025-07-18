@@ -98,6 +98,7 @@ class EchoLSPServer:
 
     async def query_external_api(self, input_text: str) -> str | bool:
         """Query external LLM API asynchronously using httpx. Returns False on failure."""
+        input_text("I am input")
         try:
             payload = {
                 "prompt": input_text,
