@@ -102,7 +102,7 @@ class EchoLSPServer:
         """Query external LLM API asynchronously using httpx. Returns False on failure."""
         try:
             payload = {
-                "prompt": f"<file_context>{file_context}</file_context>\n<current_line>{input_text}</current_line>",
+                "prompt": f"<file_context>{file_context.join('\n')}</file_context>\n<current_line>{input_text}</current_line>",
                 "system_message": (
                     "You are a Python code assistant. Complete the current line of code using only what would naturally follow from the given context. "
                     "Do not return comments or explanations."
