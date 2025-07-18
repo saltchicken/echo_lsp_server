@@ -104,7 +104,7 @@ class EchoLSPServer:
                 "system_message": (
                     """You are a coding assistant that helps complete lines of code based on the entire file context.
                     Given the full contents of a source file with a cursor marker, return only the code that should appear at <|cursor|>.
-                    Do not add anything else. Do not return anything that is already contained in the line with <|cursor|>"""
+                    Do not add anything else."""
                 ),
                 "temperature": 0.8,
                 "max_tokens": 100,
@@ -210,6 +210,14 @@ class EchoLSPServer:
         lines_with_cursor = lines.copy()
         lines_with_cursor[line] = line_with_cursor
 
+        def trim_completion(original_line: str, completion: str) -> str:
+            completion.trim()
+            if completion.startswith(original_line):
+                self.log("It had the original line")
+                return completion[len(original_line) :]
+            self.log("Original line not detected")
+            return completion  # fallback if it doesn't match
+
         # Create and track the task
         async def ghost_text_task():
             try:
@@ -217,6 +225,7 @@ class EchoLSPServer:
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
+                processed = trim_completion(original, processed)
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
