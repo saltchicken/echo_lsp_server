@@ -212,6 +212,8 @@ class EchoLSPServer:
 
         def trim_completion(original_line: str, completion: str) -> str:
             completion = completion.strip()
+            self.log(f"Completion: {completion}")
+            self.log(f"Original: {original}")
             if completion.startswith(original_line):
                 self.log("It had the original line")
                 return completion[len(original_line) :]
