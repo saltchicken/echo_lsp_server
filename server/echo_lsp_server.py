@@ -6,6 +6,8 @@ import sys
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Set
 import weakref
+import requests
+import httpx
 
 
 class EchoLSPServer:
@@ -94,14 +96,33 @@ class EchoLSPServer:
         body = await self.reader.readexactly(content_length)
         return json.loads(body.decode("utf-8"))
 
-    async def query_external_api(self, input_text: str) -> str:
-        """Simulated async external API call"""
+    async def query_external_api(self, input_text: str) -> str | bool:
+        """Query external LLM API asynchronously using httpx. Returns False on failure."""
         try:
-            await asyncio.sleep(1)  # simulate latency
-            return f"Processed: {input_text[::-1]}"  # reverse the input for demo
+            payload = {
+                "prompt": input_text,
+                "system_message": (
+                    "You are a Python code assistant. Complete the current line of code using only what would naturally follow from the given context. "
+                    "Do not return comments or explanations."
+                ),
+                "temperature": 0.8,
+                "max_tokens": 100,
+            }
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post("http://main:8000/generate", json=payload)
+                response.raise_for_status()
+
+                result = response.json()
+                return result.get("text", "") or False
+
         except asyncio.CancelledError:
             self.log("External API query was cancelled")
             raise
+
+        except Exception as e:
+            self.log(f"query_external_api error: {e}", "ERROR")
+            return False
 
     async def handle_initialize(self, request: Dict[str, Any]) -> None:
         capabilities = {
@@ -182,6 +203,9 @@ class EchoLSPServer:
         async def ghost_text_task():
             try:
                 processed = await self.query_external_api(original)
+                if processed is False:
+                    self.log("External API failed, not sending ghost text", "ERROR")
+                    return
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
