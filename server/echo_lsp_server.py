@@ -104,7 +104,7 @@ class EchoLSPServer:
                 "system_message": (
                     """You are a coding assistant that helps complete lines of code based on the entire file context.
                     Given the full contents of a source file with a cursor marker, return only the code that should appear at <|cursor|>.
-                    Do not add anything else"""
+                    Do not add anything else. Do not return anything that is already contained in the line with <|cursor|>"""
                 ),
                 "temperature": 0.8,
                 "max_tokens": 100,
