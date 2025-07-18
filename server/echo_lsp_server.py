@@ -113,10 +113,10 @@ class EchoLSPServer:
             async with httpx.AsyncClient() as client:
                 response = await client.post("http://main:8000/generate", json=payload)
                 response.raise_for_status()
-                self.log(response.text)
+                # self.log(response.text)
 
-                result = response.json()
-                return result.get("text", "") or False
+                # result = response.json()
+                return response.text or False
 
         except asyncio.CancelledError:
             self.log("External API query was cancelled")
