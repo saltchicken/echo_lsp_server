@@ -223,8 +223,7 @@ class EchoLSPServer:
         # Create and track the task
         async def ghost_text_task():
             try:
-                test = "<|fim_prefix|>def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    <|fim_suffix|>\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)<|fim_middle|>"
-                processed = await self.query_external_api(test)
+                processed = await self.query_external_api(full_prompt)
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
