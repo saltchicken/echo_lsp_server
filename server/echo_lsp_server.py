@@ -191,9 +191,15 @@ class EchoLSPServer:
         prefix = original[:character]
         suffix = original[character:]
 
-        full_prompt = "<|file_start|>\n" + "\n".join(lines[:line]) + \
-                    prefix + "\n<|fim_middle|>\n" + \
-                    suffix + "\n" + "\n".join(lines[line+1:]) + "\n<|file_end|>"
+        full_prompt = (
+            "<|fim_prefix|>\n"
+            + "\n".join(lines[:line])
+            + prefix
+            + "\n<|fim_suffix|>\n"
+            + suffix
+            + "\n".join(lines[line + 1 :])
+            + "<|fim_middle|>"
+        )
 
         def remove_code_fence(s: str) -> str:
             return re.sub(r"^```(?:\w+)?\n?|```$", "", s.strip(), flags=re.MULTILINE)
