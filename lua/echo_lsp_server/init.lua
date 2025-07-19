@@ -1,5 +1,3 @@
-print("Hello there. I am the init lua")
-
 -- local M = {}
 --
 -- function M.setup()
