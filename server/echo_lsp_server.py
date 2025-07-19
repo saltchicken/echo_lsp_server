@@ -215,7 +215,7 @@ class EchoLSPServer:
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
-                # processed = remove_code_fence(processed)
+                processed = remove_code_fence(processed)
                 # processed = trim_completion(original, processed)
                 lines = processed.split("\n")
                 self.log(f"Lines output: {len(lines)}")
