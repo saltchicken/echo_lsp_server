@@ -323,4 +323,9 @@ class EchoLSPServer:
 
 
 if __name__ == "__main__":
-    asyncio.run(EchoLSPServer().run())
+    loop = asyncio.get_event_loop()
+    server = EchoLSPServer()
+    try:
+        loop.run_until_complete(server.run())
+    finally:
+        loop.close()
