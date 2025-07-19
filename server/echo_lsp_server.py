@@ -197,16 +197,16 @@ class EchoLSPServer:
         def remove_code_fence(s: str) -> str:
             return re.sub(r"^```(?:\w+)?\n?|```$", "", s.strip(), flags=re.MULTILINE)
 
-        def trim_completion(original_line: str, completion: str) -> str:
-            completion = completion.strip()
-            original_line = original_line.strip()
-            self.log(f"Completion: {completion}")
-            self.log(f"Original: {original_line}")
-            if completion.startswith(original_line):
-                self.log("It had the original line")
-                return completion[len(original_line) :]
-            self.log("Original line not detected")
-            return completion  # fallback if it doesn't match
+        # def trim_completion(original_line: str, completion: str) -> str:
+        #     completion = completion.strip()
+        #     original_line = original_line.strip()
+        #     self.log(f"Completion: {completion}")
+        #     self.log(f"Original: {original_line}")
+        #     if completion.startswith(original_line):
+        #         self.log("It had the original line")
+        #         return completion[len(original_line) :]
+        #     self.log("Original line not detected")
+        #     return completion  # fallback if it doesn't match
 
         # Create and track the task
         async def ghost_text_task():
@@ -215,8 +215,10 @@ class EchoLSPServer:
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
-                processed = remove_code_fence(processed)
-                processed = trim_completion(original, processed)
+                # processed = remove_code_fence(processed)
+                # processed = trim_completion(original, processed)
+                lines = processed.split("\n")
+                self.log(f"Lines output: {len(lines)}")
                 processed = processed.split("\n")[0]
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
