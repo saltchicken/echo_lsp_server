@@ -43,6 +43,9 @@ class EchoLSPServer:
             task_obj = task_ref()
             if task_obj:
                 self.active_tasks.discard(task_obj)
+                self.log("Task cleaned")
+            else:
+                self.log("Didn't find task_obj, no task cleaned?")
 
         # Use weak reference to avoid circular reference
         task_ref = weakref.ref(task, cleanup_task)
