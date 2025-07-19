@@ -16,17 +16,38 @@ function M.clear()
 end
 
 function M.insert()
-	if not (state.extmark and state.bufnr and state.line) then
+	local bufnr = state.bufnr
+	local line = state.line
+	local ghost = state.text
+	local extmark = state.extmark
+
+	if not (bufnr and line and ghost and extmark) then
 		return
 	end
-	local line_content = vim.api.nvim_buf_get_lines(state.bufnr, state.line, state.line + 1, false)[1]
-	local cursor_col = vim.api.nvim_win_get_cursor(0)[2]
-	local new_line = line_content:sub(1, cursor_col) .. state.text .. line_content:sub(cursor_col + 1)
-	vim.api.nvim_buf_set_lines(state.bufnr, state.line, state.line + 1, false, { new_line })
-	local target_line, target_col = state.line, cursor_col + #state.text
+
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local cursor_line = cursor[1] - 1
+	local cursor_col = cursor[2]
+
+	-- Only insert if on correct line
+	if cursor_line ~= line then
+		return
+	end
+
+	local lines = vim.api.nvim_buf_get_lines(bufnr, line, line + 1, false)
+	if not lines or not lines[1] then
+		return
+	end
+	local current_line = lines[1]
+
+	local new_line = current_line:sub(1, cursor_col) .. ghost .. current_line:sub(cursor_col + 1)
+	vim.api.nvim_buf_set_lines(bufnr, line, line + 1, false, { new_line })
+
+	local target_col = cursor_col + #ghost
 	M.clear()
+
 	vim.schedule(function()
-		vim.api.nvim_win_set_cursor(0, { target_line + 1, target_col })
+		vim.api.nvim_win_set_cursor(0, { line + 1, target_col })
 	end)
 end
 
@@ -34,6 +55,7 @@ vim.lsp.handlers["ghostText/virtualText"] = function(_, result)
 	if not result or not result.uri then
 		return
 	end
+
 	local bufnr = vim.uri_to_bufnr(result.uri)
 	if not vim.api.nvim_buf_is_loaded(bufnr) then
 		vim.fn.bufload(bufnr)
@@ -41,8 +63,9 @@ vim.lsp.handlers["ghostText/virtualText"] = function(_, result)
 
 	local line = result.line or 0
 	local text = result.text or ""
-	local cursor_line = vim.api.nvim_win_get_cursor(0)[1] - 1
-	local cursor_col = vim.api.nvim_win_get_cursor(0)[2]
+	local cursor_pos = vim.api.nvim_win_get_cursor(0)
+	local cursor_line = cursor_pos[1] - 1
+	local cursor_col = cursor_pos[2]
 
 	vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
 
@@ -60,8 +83,9 @@ end
 vim.api.nvim_create_autocmd({ "InsertCharPre", "CursorMovedI", "TextChangedI", "InsertLeave" }, {
 	callback = function(args)
 		M.clear()
-		local clients = vim.lsp.get_active_clients({ bufnr = args.buf })
-		local uri = vim.uri_from_bufnr(args.buf)
+
+		local bufnr = args.buf
+		local clients = vim.lsp.get_active_clients({ bufnr = bufnr })
 		for _, client in ipairs(clients) do
 			if client.name == "echo_lsp" then
 				client.notify("$/cancelGhostText")
@@ -73,25 +97,28 @@ vim.api.nvim_create_autocmd({ "InsertCharPre", "CursorMovedI", "TextChangedI", "
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(args)
 		local client = vim.lsp.get_client_by_id(args.data.client_id)
-		if client.name ~= "echo_lsp" then
+		if not client or client.name ~= "echo_lsp" then
 			return
 		end
+
 		local bufnr = args.buf
 
 		vim.keymap.set("i", "<C-n>", function()
 			local pos = vim.api.nvim_win_get_cursor(0)
 			local uri = vim.uri_from_bufnr(bufnr)
+
 			client.request("custom/triggerGhostText", {
 				textDocument = { uri = uri },
 				position = { line = pos[1] - 1, character = pos[2] },
 			}, function(err)
 				if err then
-					vim.notify("GhostText error: " .. tostring(err), vim.log.levels.ERROR)
+					vim.notify("Error triggering ghost text: " .. tostring(err), vim.log.levels.ERROR)
 				end
 			end, bufnr)
 		end, { buffer = bufnr, desc = "Trigger Ghost Text" })
 
 		vim.keymap.set("i", "<Tab>", function()
+			print("working")
 			if state.extmark then
 				M.insert()
 			else
@@ -114,6 +141,6 @@ vim.g._echo_lsp_ghost_state = {
 	bufnr = function()
 		return state.bufnr
 	end,
-	insert = M.insert,
 	clear = M.clear,
+	insert = M.insert,
 }
