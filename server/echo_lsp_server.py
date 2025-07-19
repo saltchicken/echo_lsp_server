@@ -72,11 +72,11 @@ class EchoLSPServer:
             },
         )
 
-    async def query_external_api(self, lines_with_cursor: str) -> str | bool:
+    async def query_external_api(self, prompt: str) -> str | bool:
         """Query external LLM API asynchronously using httpx. Returns False on failure."""
         try:
             payload = {
-                "prompt": "\n".join(lines_with_cursor),
+                "prompt": prompt,
                 "system_message": (
                     """You are a coding assistant that helps complete lines of code based on the entire file context.
                     Given the full contents of a source file with a cursor marker, return only the code that should appear at <|cursor|>.
@@ -181,10 +181,18 @@ class EchoLSPServer:
             self.log(f"Ghost request: character position out of range {character}")
             return
 
-        line_with_cursor = original[:character] + "<|cursor|>" + original[character:]
+        # line_with_cursor = original[:character] + "<|cursor|>" + original[character:]
+        #
+        # lines_with_cursor = lines.copy()
+        # lines_with_cursor[line] = line_with_cursor
 
-        lines_with_cursor = lines.copy()
-        lines_with_cursor[line] = line_with_cursor
+
+        prefix = original[:character]
+        suffix = original[character:]
+
+        full_prompt = "<|file_start|>\n" + "\n".join(lines[:line]) + \
+                    prefix + "\n<|fim_middle|>\n" + \
+                    suffix + "\n" + "\n".join(lines[line+1:]) + "\n<|file_end|>"
 
         def remove_code_fence(s: str) -> str:
             return re.sub(r"^```(?:\w+)?\n?|```$", "", s.strip(), flags=re.MULTILINE)
@@ -203,7 +211,7 @@ class EchoLSPServer:
         # Create and track the task
         async def ghost_text_task():
             try:
-                processed = await self.query_external_api(lines_with_cursor)
+                processed = await self.query_external_api(full_prompt)
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
