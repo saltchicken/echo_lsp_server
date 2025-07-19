@@ -61,7 +61,6 @@ class EchoLSPServer:
 
         return cancelled_count
 
-
     async def send_ghost_text(self, uri: str, line: int, text: str) -> None:
         await self.io.send_notification(
             "ghostText/virtualText",
@@ -90,7 +89,10 @@ class EchoLSPServer:
                 response = await client.post("http://main:8000/generate", json=payload)
                 self.log("hello")
                 if response.status_code != 200:
-                    self.log(f"API returned status {response.status_code}: {response.text}", "ERROR")
+                    self.log(
+                        f"API returned status {response.status_code}: {response.text}",
+                        "ERROR",
+                    )
 
                 response.raise_for_status()
                 # self.log(response.text)
@@ -192,15 +194,24 @@ class EchoLSPServer:
         # lines_with_cursor = lines.copy()
         # lines_with_cursor[line] = line_with_cursor
 
-
         prefix = original[:character]
         suffix = original[character:]
 
+        # full_prompt = (
+        #     "<|fim_prefix|>\n"
+        #     + "\n".join(lines[:line])
+        #     + prefix
+        #     + "\n<|fim_suffix|>\n"
+        #     + suffix
+        #     + "\n".join(lines[line + 1 :])
+        #     + "<|fim_middle|>"
+        # )
+
         full_prompt = (
-            "<|fim_prefix|>\n"
+            "<|fim_prefix|>"
             + "\n".join(lines[:line])
             + prefix
-            + "\n<|fim_suffix|>\n"
+            + "<|fim_suffix|>"
             + suffix
             + "\n".join(lines[line + 1 :])
             + "<|fim_middle|>"
