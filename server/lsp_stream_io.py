@@ -14,7 +14,7 @@ class LSPStreamIO:
     async def setup(self):
         """Connect the internal StreamReader to stdin"""
         protocol = asyncio.StreamReaderProtocol(self._reader)
-        await asyncio.get_event_loop().connect_read_pipe(lambda: protocol, sys.stdin)
+        await asyncio.get_running_loop().connect_read_pipe(lambda: protocol, sys.stdin)
 
     async def read_message(self) -> Optional[Dict[str, Any]]:
         content_length = None
