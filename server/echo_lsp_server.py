@@ -76,13 +76,6 @@ class EchoLSPServer:
         try:
             payload = {
                 "prompt": prompt,
-                # "system_message": (
-                #     """You are a coding assistant that helps complete lines of code based on the entire file context.
-                #     Given the full contents of a source file with a cursor marker, return only the code that should appear at <|cursor|>.
-                #     Do not add anything else."""
-                # ),
-                # "temperature": 0.8,
-                # "max_tokens": 100,
             }
 
             async with httpx.AsyncClient(timeout=15.0) as client:
@@ -94,10 +87,6 @@ class EchoLSPServer:
                     )
 
                 response.raise_for_status()
-                # self.log(response.text)
-
-                # result = response.json()
-                self.log(f"Response: {response}")
                 return response.text or False
 
         except asyncio.CancelledError:
@@ -105,8 +94,7 @@ class EchoLSPServer:
             raise
 
         except Exception as e:
-            self.log(repr(e))
-            self.log(f"query_external_api error: {e}", "ERROR")
+            self.log(f"query_external_api error: {repr(e)}", "ERROR")
             return False
 
     async def handle_initialize(self, request: Dict[str, Any]) -> None:
@@ -131,7 +119,7 @@ class EchoLSPServer:
             }
         )
         self.initialized = True
-        self.log("Server initialized")
+        self.log("LSP Server initialized")
 
     async def handle_hover(self, request: Dict[str, Any]) -> None:
         params = request["params"]
@@ -188,23 +176,8 @@ class EchoLSPServer:
             self.log(f"Ghost request: character position out of range {character}")
             return
 
-        # line_with_cursor = original[:character] + "<|cursor|>" + original[character:]
-        #
-        # lines_with_cursor = lines.copy()
-        # lines_with_cursor[line] = line_with_cursor
-
         prefix = original[:character]
         suffix = original[character:]
-
-        # full_prompt = (
-        #     "<|fim_prefix|>\n"
-        #     + "\n".join(lines[:line])
-        #     + prefix
-        #     + "\n<|fim_suffix|>\n"
-        #     + suffix
-        #     + "\n".join(lines[line + 1 :])
-        #     + "<|fim_middle|>"
-        # )
 
         full_prompt = (
             "<|fim_prefix|>"
@@ -216,20 +189,6 @@ class EchoLSPServer:
             + "<|fim_middle|>"
         )
 
-        def remove_code_fence(s: str) -> str:
-            return re.sub(r"^```(?:\w+)?\n?|```$", "", s.strip(), flags=re.MULTILINE)
-
-        # def trim_completion(original_line: str, completion: str) -> str:
-        #     completion = completion.strip()
-        #     original_line = original_line.strip()
-        #     self.log(f"Completion: {completion}")
-        #     self.log(f"Original: {original_line}")
-        #     if completion.startswith(original_line):
-        #         self.log("It had the original line")
-        #         return completion[len(original_line) :]
-        #     self.log("Original line not detected")
-        #     return completion  # fallback if it doesn't match
-
         # Create and track the task
         async def ghost_text_task():
             try:
@@ -237,10 +196,8 @@ class EchoLSPServer:
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
-                # processed = remove_code_fence(processed)
-                # processed = trim_completion(original, processed)
-                lines = processed.split("\n")
-                self.log(f"Lines output: {len(lines)}")
+                # lines = processed.split("\n")
+                # self.log(f"Lines output: {len(lines)}")
                 processed = processed.split("\n")[0]
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
