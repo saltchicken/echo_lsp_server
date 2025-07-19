@@ -251,7 +251,7 @@ class EchoLSPServer:
         self.log("Cancel request received")
         # params = message.get("params", {})
         cancelled = self.cancel_all_tasks()
-        self.log(f"Cancelled {cancelled} tasks")
+        # self.log(f"Cancelled {cancelled} tasks")
 
     async def handle_notification(self, method: str, params: Dict[str, Any]) -> None:
         if method == "initialized":
@@ -284,10 +284,10 @@ class EchoLSPServer:
     async def dispatch_message(self, message: Dict[str, Any]) -> None:
         try:
             method = message.get("method")
-            if method:
-                self.log(method)
-            else:
-                self.log("Method was missing", "ERROR")
+            # if method:
+            #     self.log(method)
+            # else:
+            #     self.log("Method was missing", "ERROR")
             if method == "initialize":
                 await self.handle_initialize(message)
             elif method == "textDocument/hover":
