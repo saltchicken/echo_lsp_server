@@ -92,6 +92,7 @@ class EchoLSPServer:
                 # self.log(response.text)
 
                 # result = response.json()
+                self.log(f"Response text: {response.text}")
                 return response.text or False
 
         except asyncio.CancelledError:
