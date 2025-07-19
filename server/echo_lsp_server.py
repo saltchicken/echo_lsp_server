@@ -104,6 +104,7 @@ class EchoLSPServer:
             raise
 
         except Exception as e:
+            self.log(repr(e))
             self.log(f"query_external_api error: {e}", "ERROR")
             return False
 
