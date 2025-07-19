@@ -9,7 +9,7 @@ import weakref
 
 # import requests
 import httpx
-from lsp_reader import LSPStreamReader
+from lsp_stream_io import LSPStreamIO
 
 
 class EchoLSPServer:
@@ -17,7 +17,7 @@ class EchoLSPServer:
         self.running = True
         self.initialized = False
         self.document_store: Dict[str, List[str]] = {}
-        self.reader: Optional[asyncio.StreamReader] = None
+        self.io = LSPStreamIO()
         self.active_tasks: Set[asyncio.Task] = set()
 
         log_dir = os.path.expanduser("~/.cache/nvim")
@@ -61,18 +61,9 @@ class EchoLSPServer:
 
         return cancelled_count
 
-    async def send_response(self, response: Dict[str, Any]) -> None:
-        content = json.dumps(response)
-        message = f"Content-Length: {len(content)}\r\n\r\n{content}"
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, lambda: sys.stdout.write(message))
-        sys.stdout.flush()
-
-    async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
-        await self.send_response({"jsonrpc": "2.0", "method": method, "params": params})
 
     async def send_ghost_text(self, uri: str, line: int, text: str) -> None:
-        await self.send_notification(
+        await self.io.send_notification(
             "ghostText/virtualText",
             {
                 "uri": uri,
@@ -122,7 +113,7 @@ class EchoLSPServer:
             "experimental": {"ghostTextProvider": True},
         }
 
-        await self.send_response(
+        await self.io.send_response(
             {
                 "jsonrpc": "2.0",
                 "id": request["id"],
@@ -156,7 +147,7 @@ class EchoLSPServer:
                     },
                 }
 
-        await self.send_response(
+        await self.io.send_response(
             {"jsonrpc": "2.0", "id": request["id"], "result": result}
         )
 
@@ -168,7 +159,7 @@ class EchoLSPServer:
         # request_id = str(request["id"])
 
         # TODO: I don't believe this is needed
-        await self.send_response(
+        await self.io.send_response(
             {"jsonrpc": "2.0", "id": request["id"], "result": {"ack": True}}
         )
 
@@ -290,7 +281,7 @@ class EchoLSPServer:
             elif method == "shutdown":
                 # Cancel all tasks on shutdown
                 self.cancel_all_tasks()
-                # await self.send_response(
+                # await self.io.send_response(
                 #     {"jsonrpc": "2.0", "id": message["id"], "result": None}
                 # )
             elif method == "exit":
@@ -298,7 +289,7 @@ class EchoLSPServer:
         except Exception as e:
             self.log(f"Dispatch error: {e}", "ERROR")
             if "id" in message:
-                await self.send_response(
+                await self.io.send_response(
                     {
                         "jsonrpc": "2.0",
                         "id": message["id"],
@@ -313,12 +304,11 @@ class EchoLSPServer:
     async def run(self) -> None:
         self.log("Async Echo LSP Server starting...")
 
-        self.reader = LSPStreamReader()
-        await self.reader.setup()
+        await self.io.setup()
 
         while self.running:
             try:
-                message = await self.reader.read_message()
+                message = await self.io.read_message()
                 if message is None:
                     break
 
