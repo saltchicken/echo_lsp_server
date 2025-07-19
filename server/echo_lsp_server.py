@@ -248,7 +248,7 @@ class EchoLSPServer:
 
     async def handle_cancel_request(self, message: Dict[str, Any]):
         """Handle LSP cancel request"""
-        self.log("Cancel request received")
+        # self.log("Cancel request received")
         # params = message.get("params", {})
         cancelled = self.cancel_all_tasks()
         # self.log(f"Cancelled {cancelled} tasks")
