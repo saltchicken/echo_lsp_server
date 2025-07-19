@@ -1,1 +1,1 @@
-require("plugins.echo_lsp.ghost")
+require("echo_lsp.ghost")
