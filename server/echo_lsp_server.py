@@ -9,6 +9,7 @@ import weakref
 
 # import requests
 import httpx
+from lsp_reader import LSPStreamReader
 
 
 class EchoLSPServer:
@@ -43,9 +44,6 @@ class EchoLSPServer:
             task_obj = task_ref()
             if task_obj:
                 self.active_tasks.discard(task_obj)
-                self.log("Task cleaned")
-            else:
-                self.log("Didn't find task_obj, no task cleaned?")
 
         # Use weak reference to avoid circular reference
         task_ref = weakref.ref(task, cleanup_task)
@@ -82,23 +80,6 @@ class EchoLSPServer:
                 "text": text,
             },
         )
-
-    async def read_message(self) -> Optional[Dict[str, Any]]:
-        content_length = None
-
-        while True:
-            line = (await self.reader.readline()).decode("utf-8").strip()
-            if not line:
-                break
-            match = re.match(r"Content-Length: (\d+)", line)
-            if match:
-                content_length = int(match.group(1))
-
-        if content_length is None:
-            return None
-
-        body = await self.reader.readexactly(content_length)
-        return json.loads(body.decode("utf-8"))
 
     async def query_external_api(self, lines_with_cursor: str) -> str | bool:
         """Query external LLM API asynchronously using httpx. Returns False on failure."""
@@ -332,9 +313,8 @@ class EchoLSPServer:
     async def run(self) -> None:
         self.log("Async Echo LSP Server starting...")
 
-        self.reader = asyncio.StreamReader()
-        protocol = asyncio.StreamReaderProtocol(self.reader)
-        await asyncio.get_event_loop().connect_read_pipe(lambda: protocol, sys.stdin)
+        self.reader = LSPStreamReader()
+        await self.reader.setup()
 
         while self.running:
             try:
