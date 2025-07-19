@@ -318,7 +318,7 @@ class EchoLSPServer:
 
         while self.running:
             try:
-                message = await self.read_message()
+                message = await self.reader.read_message()
                 if message is None:
                     break
 
