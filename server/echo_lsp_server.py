@@ -88,8 +88,10 @@ class EchoLSPServer:
 
             async with httpx.AsyncClient() as client:
                 response = await client.post("http://main:8000/generate", json=payload)
+                self.log("hello")
                 if response.status_code != 200:
                     self.log(f"API returned status {response.status_code}: {response.text}", "ERROR")
+
                 response.raise_for_status()
                 # self.log(response.text)
 
