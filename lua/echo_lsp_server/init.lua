@@ -120,30 +120,7 @@ function M.setup()
 			default_config = {
 				cmd = { launch },
 				filetypes = { "text", "markdown", "lua", "python", "javascript", "typescript" },
-				root_dir = function(fname)
-					local function is_git_dir(path)
-						local stat = vim.loop.fs_stat(path .. "/.git")
-						return stat and stat.type == "directory"
-					end
-
-					-- Fall back to current buffer name if fname is not passed
-					local path = fname or vim.api.nvim_buf_get_name(0)
-					if path == "" then
-						path = vim.loop.cwd()
-					end
-
-					-- Convert to absolute path
-					path = vim.fn.fnamemodify(path, ":p")
-
-					-- Traverse upward
-					while path and path ~= "/" do
-						if is_git_dir(path) then
-							return path
-						end
-						path = vim.fn.fnamemodify(path, ":h")
-					end
-
-					-- Final fallback: current working dir
+				root_dir = function()
 					return vim.loop.cwd()
 				end,
 				single_file_support = true,
@@ -157,11 +134,8 @@ function M.setup()
 			["ghostText/virtualText"] = vim.schedule_wrap(on_ghost_text),
 		},
 		on_attach = function(client, bufnr)
-			local filename = vim.api.nvim_buf_get_name(bufnr)
-			local root_fn = client.config.root_dir
-			local root = type(root_fn) == "function" and root_fn(filename) or root_fn
-
-			print("Resolved root_dir: " .. (root or "nil"))
+			local root = client.config.root_dir
+			print("root: " .. root)
 			if client.name ~= "echo_lsp" then
 				return
 			end
