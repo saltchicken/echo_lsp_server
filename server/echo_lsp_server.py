@@ -196,6 +196,7 @@ class EchoLSPServer:
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
+                processed = processed.strip()
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
