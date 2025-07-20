@@ -188,13 +188,20 @@ class LLMCoder:
 
         if is_meaningful(suffix):
             self.log("Suffix contains content")
+            full_prompt = (
+                "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
+            )
         else:
             self.log("Suffix is empty or only whitespace, removing it.")
             suffix = ""
+            repo_name = "TEST REPO"
+            file_path = "TEST PATH"
+            file_content = original
+            full_prompt = (
+                f"<|repo_name|>{repo_name}\n<|file_sep|>{file_path}\n{file_content}"
+            )
 
-        full_prompt = (
-            "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
-        )
+
 
         def remove_suffix(text):
             max_len = min(len(text), len(suffix))
