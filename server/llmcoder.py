@@ -254,6 +254,7 @@ class LLMCoder:
         # self.log(f"Cancelled {cancelled} tasks")
 
     async def handle_notification(self, method: str, params: Dict[str, Any]) -> None:
+        print(method)
         if method == "initialized":
             self.initialized = True
         elif method == "textDocument/didOpen":
