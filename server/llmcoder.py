@@ -8,8 +8,6 @@ from typing import Dict, Any, Optional, List, Set
 import weakref
 from dataclasses import dataclass
 
-
-# import requests
 import httpx
 from lsp_stream_io import LSPStreamIO
 
@@ -24,7 +22,7 @@ class PromptContext:
     full_prompt: str
 
 
-class EchoLSPServer:
+class LLMCoder:
     def __init__(self):
         self.running = True
         self.initialized = False
@@ -34,10 +32,10 @@ class EchoLSPServer:
 
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
-        self.log_file = os.path.join(log_dir, "echo_lsp.log")
+        self.log_file = os.path.join(log_dir, "llmcoder.log")
 
         with open(self.log_file, "w") as f:
-            f.write(f"=== Echo LSP Async Server Started at {datetime.now()} ===\n")
+            f.write(f"=== LLM Coder Server Started at {datetime.now()} ===\n")
 
     def log(self, message: str, level: str = "INFO") -> None:
         try:
@@ -46,7 +44,7 @@ class EchoLSPServer:
             with open(self.log_file, "a") as f:
                 f.write(log_message)
         except Exception:
-            print(f"[Echo LSP] {message}", file=sys.stderr, flush=True)
+            print(f"[LLM Coder] {message}", file=sys.stderr, flush=True)
 
     def add_task(self, task: asyncio.Task) -> None:
         """Add a task to tracking collections"""
@@ -126,7 +124,7 @@ class EchoLSPServer:
                 "id": request["id"],
                 "result": {
                     "capabilities": capabilities,
-                    "serverInfo": {"name": "Echo Async LSP", "version": "1.0.0"},
+                    "serverInfo": {"name": "LLM Coder", "version": "1.0.0"},
                 },
             }
         )
@@ -317,7 +315,7 @@ class EchoLSPServer:
                 )
 
     async def run(self) -> None:
-        self.log("Async Echo LSP Server starting...")
+        self.log("LLM Coder starting...")
 
         await self.io.setup()
 
@@ -334,12 +332,12 @@ class EchoLSPServer:
 
         # Clean up remaining tasks
         self.cancel_all_tasks()
-        self.log("Async Echo LSP Server shutting down...")
+        self.log("LLM Coder shutting down...")
 
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    server = EchoLSPServer()
+    server = LLMCoder()
     try:
         loop.run_until_complete(server.run())
     finally:
