@@ -131,9 +131,11 @@ class LLMCoder:
         self.project_files[path] = content
         self.log(f"Stored project file: {path}")
         self.repo_root = params.get("root")
+        self.repo_root = os.path.basename(os.path.normpath(self.repo_root))
         self.log(f"Repo root set to: {self.repo_root}")
 
     def build_repo_context(self) -> str:
+
         parts = [f"<|repo_name|>{self.repo_root}"]
         for path, content in self.project_files.items():
             parts.append(f"<|file_sep|>{path}\n{content}")
