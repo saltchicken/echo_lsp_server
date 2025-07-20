@@ -215,8 +215,8 @@ class EchoLSPServer:
                 # processed = processed.strip()
                 max_len = min(len(processed), len(prompt_context.suffix))
                 for i in range(max_len, 0, -1):
+                    self.log(suffix[-i])
                     if processed.endswith(suffix[-i:]):
-                        self.log(suffix[-i])
                         processed = processed[:-i]
                         self.log("It happened")
 
