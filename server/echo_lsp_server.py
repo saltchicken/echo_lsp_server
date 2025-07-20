@@ -3,22 +3,13 @@ import json
 import os
 import re
 import sys
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Set
 import weakref
+
+# import requests
 import httpx
 from lsp_stream_io import LSPStreamIO
-
-
-@dataclass
-class PromptContext:
-    uri: str
-    line: int
-    character: int
-    prefix: str
-    suffix: str
-    full_prompt: str
 
 
 class EchoLSPServer:
@@ -46,6 +37,7 @@ class EchoLSPServer:
             print(f"[Echo LSP] {message}", file=sys.stderr, flush=True)
 
     def add_task(self, task: asyncio.Task) -> None:
+        """Add a task to tracking collections"""
         self.active_tasks.add(task)
 
         def cleanup_task(task_ref):
@@ -53,10 +45,12 @@ class EchoLSPServer:
             if task_obj:
                 self.active_tasks.discard(task_obj)
 
+        # Use weak reference to avoid circular reference
         task_ref = weakref.ref(task, cleanup_task)
         task.add_done_callback(lambda t: cleanup_task(task_ref))
 
     def cancel_all_tasks(self) -> int:
+        """Cancel all active tasks"""
         tasks_to_cancel = list(self.active_tasks)
         cancelled_count = 0
 
@@ -78,8 +72,12 @@ class EchoLSPServer:
         )
 
     async def query_external_api(self, prompt: str) -> str | bool:
+        """Query external LLM API asynchronously using httpx. Returns False on failure."""
         try:
-            payload = {"prompt": prompt}
+            payload = {
+                "prompt": prompt,
+            }
+
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.post("http://main:8000/generate", json=payload)
                 if response.status_code != 200:
@@ -87,11 +85,14 @@ class EchoLSPServer:
                         f"API returned status {response.status_code}: {response.text}",
                         "ERROR",
                     )
+
                 response.raise_for_status()
                 return response.text or False
+
         except asyncio.CancelledError:
             self.log("External API query was cancelled")
             raise
+
         except Exception as e:
             self.log(f"query_external_api error: {repr(e)}", "ERROR")
             return False
@@ -99,9 +100,14 @@ class EchoLSPServer:
     async def handle_initialize(self, request: Dict[str, Any]) -> None:
         capabilities = {
             "hoverProvider": True,
-            "textDocumentSync": {"openClose": True, "change": 1, "save": True},
+            "textDocumentSync": {
+                "openClose": True,
+                "change": 1,
+                "save": True,
+            },
             "experimental": {"ghostTextProvider": True},
         }
+
         await self.io.send_response(
             {
                 "jsonrpc": "2.0",
@@ -119,6 +125,7 @@ class EchoLSPServer:
         params = request["params"]
         uri = params["textDocument"]["uri"]
         line_number = params["position"]["line"]
+
         result = None
         if uri in self.document_store:
             lines = self.document_store[uri]
@@ -134,6 +141,7 @@ class EchoLSPServer:
                         "end": {"line": line_number, "character": len(current_line)},
                     },
                 }
+
         await self.io.send_response(
             {"jsonrpc": "2.0", "id": request["id"], "result": result}
         )
@@ -143,6 +151,9 @@ class EchoLSPServer:
         uri = params["textDocument"]["uri"]
         line = params["position"]["line"]
         character = params["position"]["character"]
+        # request_id = str(request["id"])
+
+        # TODO: I don't believe this is needed
         await self.io.send_response(
             {"jsonrpc": "2.0", "id": request["id"], "result": {"ack": True}}
         )
@@ -165,58 +176,42 @@ class EchoLSPServer:
             self.log(f"Ghost request: character position out of range {character}")
             return
 
+        # Limit the context to 10 lines before and after
         prefix_lines = lines[max(0, line - 10) : line]
         suffix_lines = lines[line + 1 : line + 11]
+
         prefix = "\n".join(prefix_lines) + "\n" + original[:character]
         suffix = original[character:] + "\n" + "\n".join(suffix_lines)
 
         full_prompt = (
-            "<|fim_prefix|>\n"
-            + prefix
-            + "\n<|fim_suffix|>\n"
-            + suffix
-            + "\n<|fim_middle|>"
+            "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
         )
 
-        context = PromptContext(
-            uri=uri,
-            line=line,
-            character=character,
-            prefix=prefix,
-            suffix=suffix,
-            full_prompt=full_prompt,
-        )
-
-        async def ghost_text_task(context: PromptContext):
+        # Create and track the task
+        async def ghost_text_task():
             try:
-                processed = await self.query_external_api(context.full_prompt)
+                processed = await self.query_external_api(full_prompt)
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
                 processed = processed.strip()
-
-                expected_suffix = context.suffix.strip()
-                if processed.endswith(expected_suffix):
-                    processed = processed[: -len(expected_suffix)].rstrip()
-                else:
-                    self.log(
-                        f"Suffix mismatch.\nExpected:\n{expected_suffix}\n\nGot End Of Output:\n{processed[-200:]}",
-                        level="WARNING",
-                    )
-
-                await self.send_ghost_text(context.uri, context.line, processed)
-                self.log(f"Ghost text sent for line {context.line + 1}")
+                await self.send_ghost_text(uri, line, processed)
+                self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
-                self.log(f"Ghost text task cancelled for line {context.line + 1}")
+                self.log(f"Ghost text task cancelled for line {line + 1}")
                 raise
             except Exception as e:
                 self.log(f"Ghost text error: {e}", "ERROR")
 
-        task = asyncio.create_task(ghost_text_task(context))
+        task = asyncio.create_task(ghost_text_task())
         self.add_task(task)
 
     async def handle_cancel_request(self, message: Dict[str, Any]):
+        """Handle LSP cancel request"""
+        # self.log("Cancel request received")
+        # params = message.get("params", {})
         cancelled = self.cancel_all_tasks()
+        # self.log(f"Cancelled {cancelled} tasks")
 
     async def handle_notification(self, method: str, params: Dict[str, Any]) -> None:
         if method == "initialized":
@@ -229,17 +224,30 @@ class EchoLSPServer:
             uri = params["textDocument"]["uri"]
             text = params["contentChanges"][0]["text"]
             self.document_store[uri] = text.splitlines()
+
+            # Optionally cancel existing tasks for this URI on change
+            # TODO: Check this out
             cancelled = self.cancel_all_tasks()
             if cancelled > 0:
-                self.log("Cancelled task(s) due to text change")
+                self.log("This happened")
+
         elif method == "textDocument/didClose":
             uri = params["textDocument"]["uri"]
             if uri in self.document_store:
                 del self.document_store[uri]
 
+            # Cancel all tasks for the closed document
+            # cancelled = self.cancel_tasks_for_uri(uri)
+            # if cancelled > 0:
+            #     self.log(f"Cancelled {cancelled} tasks for closed document: {uri}")
+
     async def dispatch_message(self, message: Dict[str, Any]) -> None:
         try:
             method = message.get("method")
+            # if method:
+            #     self.log(method)
+            # else:
+            #     self.log("Method was missing", "ERROR")
             if method == "initialize":
                 await self.handle_initialize(message)
             elif method == "textDocument/hover":
@@ -256,7 +264,11 @@ class EchoLSPServer:
             elif method == "$/cancelGhostText":
                 await self.handle_cancel_request(message)
             elif method == "shutdown":
+                # Cancel all tasks on shutdown
                 self.cancel_all_tasks()
+                # await self.io.send_response(
+                #     {"jsonrpc": "2.0", "id": message["id"], "result": None}
+                # )
             elif method == "exit":
                 self.running = False
         except Exception as e:
@@ -276,15 +288,21 @@ class EchoLSPServer:
 
     async def run(self) -> None:
         self.log("Async Echo LSP Server starting...")
+
         await self.io.setup()
+
         while self.running:
             try:
                 message = await self.io.read_message()
                 if message is None:
                     break
+
                 asyncio.create_task(self.dispatch_message(message))
+
             except Exception as e:
                 self.log(f"Main loop error: {e}", "ERROR")
+
+        # Clean up remaining tasks
         self.cancel_all_tasks()
         self.log("Async Echo LSP Server shutting down...")
 
