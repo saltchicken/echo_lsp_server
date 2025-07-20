@@ -132,7 +132,7 @@ function M.setup(opts)
 			return
 		end
 
-		-- Display first line as virtual text
+		-- Display first line as virtual text overlay
 		local first_line_text = lines[1]
 		if first_line_text and #first_line_text > 0 then
 			local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ghost_ns, line_num, col, {
@@ -143,14 +143,17 @@ function M.setup(opts)
 			table.insert(state.extmarks, extmark_id)
 		end
 
-		-- Display additional lines as virtual lines
+		-- Display additional lines as a single virtual lines block to maintain order
 		if #lines > 1 then
+			local additional_lines = {}
 			for i = 2, #lines do
-				local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ghost_ns, line_num, 0, {
-					virt_lines = { { { lines[i], config.ghost_text.hl_group } } },
-				})
-				table.insert(state.extmarks, extmark_id)
+				table.insert(additional_lines, { { lines[i], config.ghost_text.hl_group } })
 			end
+
+			local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ghost_ns, line_num, col, {
+				virt_lines = additional_lines,
+			})
+			table.insert(state.extmarks, extmark_id)
 		end
 	end
 
