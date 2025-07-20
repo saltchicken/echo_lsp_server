@@ -6,20 +6,9 @@ import sys
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Set
 import weakref
-from dataclasses import dataclass
 
 import httpx
 from lsp_stream_io import LSPStreamIO
-
-
-@dataclass
-class PromptContext:
-    uri: str
-    line: int
-    character: int
-    prefix: str
-    suffix: str
-    full_prompt: str
 
 
 class LLMCoder:
@@ -186,7 +175,6 @@ class LLMCoder:
             self.log(f"Ghost request: character position out of range {character}")
             return
 
-        prompt_context = PromptContext(uri, line, character, "", "", "")
 
         # Limit the context to 10 lines before and after
         prefix_lines = lines[max(0, line - 10) : line]
@@ -199,30 +187,24 @@ class LLMCoder:
             "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
         )
 
-        prompt_context.prefix = prefix
-        prompt_context.suffix = suffix
-        prompt_context.full_prompt = full_prompt
 
         # Create and track the task
-        async def ghost_text_task(context: PromptContext):
+        async def ghost_text_task():
             try:
                 processed = await self.query_external_api(full_prompt)
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
                 # processed = processed.strip()
-                max_len = min(len(processed), len(prompt_context.suffix))
+                max_len = min(len(processed), len(suffix))
                 for i in range(max_len, 0, -1):
-                    candidate = prompt_context.suffix[:i]
+                    candidate = suffix[:i]
                     self.log(candidate)
                     if processed.endswith(candidate):
                         processed = processed[:-i]
                         self.log(f"Stripped suffix: {repr(candidate)}")
-                        break  # Stop after the first match
+                        break
 
-                self.log("-" * 80)
-                self.log(prompt_context.suffix)
-                self.log("-" * 80)
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
@@ -231,7 +213,7 @@ class LLMCoder:
             except Exception as e:
                 self.log(f"Ghost text error: {e}", "ERROR")
 
-        task = asyncio.create_task(ghost_text_task(prompt_context))
+        task = asyncio.create_task(ghost_text_task())
         self.add_task(task)
 
     async def handle_cancel_request(self, message: Dict[str, Any]):
