@@ -215,10 +215,12 @@ class EchoLSPServer:
                 # processed = processed.strip()
                 max_len = min(len(processed), len(prompt_context.suffix))
                 for i in range(max_len, 0, -1):
-                    self.log(suffix[-i])
-                    if processed.endswith(suffix[-i:]):
+                    candidate = prompt_context.suffix[:i]
+                    self.log(candidate)
+                    if processed.endswith(candidate):
                         processed = processed[:-i]
-                        self.log("It happened")
+                        self.log(f"Stripped suffix: {repr(candidate)}")
+                        break  # Stop after the first match
 
                 self.log("-" * 80)
                 self.log(prompt_context.suffix)
