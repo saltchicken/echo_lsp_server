@@ -10,6 +10,38 @@ function M.setup()
 		bufnr = nil,
 	}
 
+	local function find_git_root(start_path)
+		local path = start_path or vim.fn.expand("%:p:h")
+		local root_path = vim.loop.fs_realpath(path)
+
+		if not root_path then
+			return vim.loop.cwd()
+		end
+
+		-- Traverse up the directory tree
+		while root_path do
+			local git_path = root_path .. "/.git"
+			local stat = vim.loop.fs_stat(git_path)
+
+			if stat then
+				return root_path
+			end
+
+			-- Get parent directory
+			local parent = vim.fn.fnamemodify(root_path, ":h")
+
+			-- If we've reached the root of the filesystem, stop
+			if parent == root_path then
+				break
+			end
+
+			root_path = parent
+		end
+
+		-- Fallback to current working directory if no .git found
+		return vim.loop.cwd()
+	end
+
 	local function clear()
 		if state.bufnr then
 			vim.api.nvim_buf_clear_namespace(state.bufnr, ghost_ns, 0, -1)
@@ -120,9 +152,7 @@ function M.setup()
 			default_config = {
 				cmd = { launch },
 				filetypes = { "text", "markdown", "lua", "python", "javascript", "typescript" },
-				root_dir = function()
-					return vim.loop.cwd()
-				end,
+				root_dir = find_git_root,
 				single_file_support = true,
 			},
 		}
