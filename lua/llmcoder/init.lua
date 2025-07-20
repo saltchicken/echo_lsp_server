@@ -32,7 +32,8 @@ function M.find_git_root()
 	end
 
 	-- fallback if no .git directory was found
-	return cwd
+	-- return cwd
+	return nil
 end
 
 function M.setup(opts)
