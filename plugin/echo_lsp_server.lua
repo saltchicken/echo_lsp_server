@@ -114,9 +114,8 @@ function M.setup()
 	})
 
 	-- Register LSP config if missing
-	if not lspconfig.echo_lsp then
-		local launch = vim.fn.expand("~/.local/share/echo_lsp_server/launch.sh")
-		lspconfig.echo_lsp = {
+	if not require("lspconfig.configs").echo_lsp then
+		require("lspconfig.configs").echo_lsp = {
 			default_config = {
 				cmd = { launch },
 				filetypes = { "text", "markdown", "lua", "python", "javascript", "typescript" },
