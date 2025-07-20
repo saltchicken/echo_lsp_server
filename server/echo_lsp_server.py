@@ -213,6 +213,7 @@ class EchoLSPServer:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
                 # processed = processed.strip()
+                #
                 self.log(prompt_context.suffix)
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
@@ -222,7 +223,7 @@ class EchoLSPServer:
             except Exception as e:
                 self.log(f"Ghost text error: {e}", "ERROR")
 
-        task = asyncio.create_task(ghost_text_task())
+        task = asyncio.create_task(ghost_text_task(prompt_context))
         self.add_task(task)
 
     async def handle_cancel_request(self, message: Dict[str, Any]):
