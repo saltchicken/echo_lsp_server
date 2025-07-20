@@ -254,7 +254,6 @@ class LLMCoder:
         # self.log(f"Cancelled {cancelled} tasks")
 
     async def handle_notification(self, method: str, params: Dict[str, Any]) -> None:
-        print(method)
         if method == "initialized":
             self.initialized = True
         elif method == "textDocument/didOpen":
@@ -276,9 +275,6 @@ class LLMCoder:
             uri = params["textDocument"]["uri"]
             if uri in self.document_store:
                 del self.document_store[uri]
-        elif method == "custom/projectFile":
-            self.log("It happening actually")
-            await self.handle_project_file(params)
 
 
             # Cancel all tasks for the closed document
@@ -308,6 +304,9 @@ class LLMCoder:
                 await self.handle_notification(method, message.get("params", {}))
             elif method == "$/cancelGhostText":
                 await self.handle_cancel_request(message)
+            elif method == "custom/projectFile":
+                self.log("It happening actually")
+                await self.handle_project_file(params)
             elif method == "shutdown":
                 # Cancel all tasks on shutdown
                 self.cancel_all_tasks()
