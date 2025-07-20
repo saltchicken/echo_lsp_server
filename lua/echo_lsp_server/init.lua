@@ -121,7 +121,9 @@ function M.setup()
 			default_config = {
 				cmd = { launch },
 				filetypes = { "text", "markdown", "lua", "python", "javascript", "typescript" },
-				root_dir = util.root_pattern(".git", "README.md"),
+				root_dir = function()
+					return vim.loop.cwd()
+				end,
 				single_file_support = true,
 			},
 		}
@@ -133,9 +135,8 @@ function M.setup()
 			["ghostText/virtualText"] = vim.schedule_wrap(on_ghost_text),
 		},
 		on_attach = function(client, bufnr)
-			local filename = vim.api.nvim_buf_get_name(bufnr)
-			local resolved_root = client.config.root_dir(filename)
-			print("Resolved root dir: " .. resolved_root)
+			local root = client.config.root_dir
+			print("root: " .. root)
 			if client.name ~= "echo_lsp" then
 				return
 			end
