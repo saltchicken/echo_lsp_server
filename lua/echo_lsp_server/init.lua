@@ -137,7 +137,7 @@ function M.setup(opts)
 		if first_line_text and #first_line_text > 0 then
 			local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ghost_ns, line_num, col, {
 				virt_text = {
-					{ string.rep(" ", #first_line_text), "Normal" }, -- creates padding
+					{ string.rep("", #first_line_text), "Normal" }, -- creates padding
 					{ first_line_text, config.ghost_text.hl_group }, -- actual ghost text
 				},
 				virt_text_pos = "inline",
