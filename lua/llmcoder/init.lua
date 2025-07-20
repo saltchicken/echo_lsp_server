@@ -26,7 +26,7 @@ function M.setup(opts)
 		},
 	}, opts)
 
-	local ghost_ns = vim.api.nvim_create_namespace("echo_lsp_ghost")
+	local ghost_ns = vim.api.nvim_create_namespace("llmcoder_ghost")
 	local state = {
 		extmarks = {},
 		ghost_data = nil, -- Store complete ghost text data
@@ -38,9 +38,9 @@ function M.setup(opts)
 		return bufnr and vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr)
 	end
 
-	local function get_echo_lsp_client(bufnr)
+	local function get_llmcoder_client(bufnr)
 		for _, client in ipairs(vim.lsp.get_active_clients({ bufnr = bufnr })) do
-			if client.name == "echo_lsp" then
+			if client.name == "llmcoder" then
 				return client
 			end
 		end
@@ -188,7 +188,7 @@ function M.setup(opts)
 
 	local function cancel_ghost_text()
 		local bufnr = vim.api.nvim_get_current_buf()
-		local client = get_echo_lsp_client(bufnr)
+		local client = get_llmcoder_client(bufnr)
 
 		if client then
 			-- Notify server to cancel
@@ -200,10 +200,10 @@ function M.setup(opts)
 
 	local function trigger_ghost_text()
 		local bufnr = vim.api.nvim_get_current_buf()
-		local client = get_echo_lsp_client(bufnr)
+		local client = get_llmcoder_client(bufnr)
 
 		if not client then
-			vim.notify("Echo LSP not active for current buffer", vim.log.levels.WARN)
+			vim.notify("LLM Coder not active for current buffer", vim.log.levels.WARN)
 			return
 		end
 
@@ -243,7 +243,7 @@ function M.setup(opts)
 	end
 
 	local function setup_autocommands()
-		local group = vim.api.nvim_create_augroup("EchoLSPGhostText", { clear = true })
+		local group = vim.api.nvim_create_augroup("LLMCoderGhostText", { clear = true })
 
 		-- Cancel ghost text on various events
 		vim.api.nvim_create_autocmd({ "InsertLeave", "BufLeave", "WinLeave" }, {
@@ -275,8 +275,8 @@ function M.setup(opts)
 
 	local function setup_lsp_server()
 		-- Register LSP server if not already registered
-		if not lspconfig.echo_lsp then
-			lspconfig.echo_lsp = {
+		if not lspconfig.llmcoder then
+			lspconfig.llmcoder = {
 				default_config = {
 					cmd = { config.server.launch_script },
 					filetypes = config.server.filetypes,
@@ -289,12 +289,12 @@ function M.setup(opts)
 		end
 
 		-- Setup the LSP server
-		lspconfig.echo_lsp.setup({
+		lspconfig.llmcoder.setup({
 			handlers = {
 				["ghostText/virtualText"] = vim.schedule_wrap(on_ghost_text_response),
 			},
 			on_attach = function(client, bufnr)
-				if client.name ~= "echo_lsp" then
+				if client.name ~= "llmcoder" then
 					return
 				end
 
