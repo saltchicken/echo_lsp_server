@@ -194,11 +194,22 @@ class LLMCoder:
         else:
             self.log("Suffix is empty or only whitespace, removing it.")
             suffix = ""
-            repo_name = "TEST REPO"
-            file_path = "TEST PATH"
+            repo_name = "llmcoder"
+            file_path = "utils.py"
+            repo_content = """
+            def hello_world():
+                print('Hello, world!')
+
+            if __name__ == "__main__":
+                hello_world()
+            """
+
+
+
+
             file_content = "\n".join(lines)
             full_prompt = (
-                f"<|repo_name|>{repo_name}\n<|file_sep|>{file_path}\n{file_content}"
+                f"<|repo_name|>{repo_name}\n<|file_sep|>{file_path}\n{repo_content}\n<|file_sep|>main.py\n{file_content}"
             )
 
 
