@@ -19,6 +19,7 @@ class LLMCoder:
         self.io = LSPStreamIO()
         self.active_tasks: Set[asyncio.Task] = set()
         self.project_files: Dict[str, str] = {}  # key: file path, value: file content
+        self.repo_root: Optional[str] = None
 
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
@@ -130,8 +131,8 @@ class LLMCoder:
         self.project_files[path] = content
         self.log(f"Stored project file: {path}")
 
-    def build_repo_context(self, repo_name: str = "MyRepo") -> str:
-        parts = [f"<|repo_name|>{repo_name}"]
+    def build_repo_context(self) -> str:
+        parts = [f"<|repo_name|>{self.repo_root}"]
         for path, content in self.project_files.items():
             parts.append(f"<|file_sep|>{path}\n{content}")
         return "\n".join(parts)
@@ -200,8 +201,7 @@ class LLMCoder:
         prefix = "\n".join(prefix_lines) + "\n" + original[:character]
         suffix = original[character:] + "\n" + "\n".join(suffix_lines)
 
-        # TODO: How do I dynamically create a repo name
-        repo_context = self.build_repo_context("Repo In Development")
+        repo_context = self.build_repo_context()
 
 
 
@@ -211,6 +211,7 @@ class LLMCoder:
         )
 
         full_prompt = repo_context + "\n" + full_prompt
+
 
         # def is_meaningful(text: str) -> bool:
         #     return bool(text.strip())
