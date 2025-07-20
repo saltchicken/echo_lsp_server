@@ -213,11 +213,17 @@ class EchoLSPServer:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
                 # processed = processed.strip()
-                # I want to check if the end of processed matches the beginning of prompt_context.suffix
-                if processed.endswith(prompt_context.suffix):
-                    processed = processed[: -len(prompt_context.suffix)]
-                    self.log("IT HAPPENED")
+                max_len = min(len(processed), len(suffix))
+                for i in range(max_len, 0, -1):
+                    if processed.endswith(suffix[-i:]):
+                        return processed[:-i]
+
+                self.log(f"Processed text does not end with suffix: {suffix}")
+                return processed
+
+                self.log("-" * 80)
                 self.log(prompt_context.suffix)
+                self.log("-" * 80)
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
