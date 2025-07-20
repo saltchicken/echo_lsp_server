@@ -183,34 +183,27 @@ class LLMCoder:
         prefix = "\n".join(prefix_lines) + "\n" + original[:character]
         suffix = original[character:] + "\n" + "\n".join(suffix_lines)
 
-        def is_meaningful(text: str) -> bool:
-            return bool(text.strip())
+        full_prompt = (
+            "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
+        )
 
-        if is_meaningful(suffix):
-            self.log("Suffix contains content")
-            full_prompt = (
-                "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
-            )
-        else:
-            self.log("Suffix is empty or only whitespace, removing it.")
-            suffix = ""
-            repo_name = "llmcoder"
-            file_path = "utils.py"
-            repo_content = """
-            def hello_world():
-                print('Hello, world!')
-
-            if __name__ == "__main__":
-                hello_world()
-            """
-
-
-
-
-            file_content = "\n".join(lines)
-            full_prompt = (
-                f"<|repo_name|>{repo_name}\n<|file_sep|>{file_path}\n{repo_content}\n<|file_sep|>main.py\n{file_content}"
-            )
+        # def is_meaningful(text: str) -> bool:
+        #     return bool(text.strip())
+        #
+        # if is_meaningful(suffix):
+        #     self.log("Suffix contains content")
+        #     full_prompt = (
+        #         "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
+        #     )
+        # else:
+        #     self.log("Suffix is empty or only whitespace, removing it.")
+        #     suffix = ""
+        #     repo_name = "TEST REPO"
+        #     file_path = "TEST PATH"
+        #     file_content = "\n".join(lines)
+        #     full_prompt = (
+        #         f"<|repo_name|>{repo_name}\n<|file_sep|>{file_path}\n{file_content}"
+        #     )
 
 
 
