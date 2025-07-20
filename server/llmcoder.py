@@ -130,6 +130,8 @@ class LLMCoder:
 
         self.project_files[path] = content
         self.log(f"Stored project file: {path}")
+        self.repo_root = params.get("root")
+        self.log(f"Repo root set to: {self.repo_root}")
 
     def build_repo_context(self) -> str:
         parts = [f"<|repo_name|>{self.repo_root}"]
@@ -197,6 +199,7 @@ class LLMCoder:
         # Limit the context to 10 lines before and after
         prefix_lines = lines[max(0, line - 10) : line]
         suffix_lines = lines[line + 1 : line + 11]
+
 
         prefix = "\n".join(prefix_lines) + "\n" + original[:character]
         suffix = original[character:] + "\n" + "\n".join(suffix_lines)

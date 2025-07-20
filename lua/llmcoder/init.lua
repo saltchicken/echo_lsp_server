@@ -446,6 +446,7 @@ function M.setup(opts)
 									client.notify("custom/projectFile", {
 										path = rel_path,
 										content = content,
+										root = git_root,
 									})
 								end
 							end
