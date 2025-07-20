@@ -176,17 +176,19 @@ class EchoLSPServer:
             self.log(f"Ghost request: character position out of range {character}")
             return
 
-        prefix = original[:character]
-        suffix = original[character:]
+        # Limit the context to 10 lines before and after
+        prefix_lines = lines[max(0, line - 10) : line]
+        suffix_lines = lines[line + 1 : line + 11]
+
+        prefix = "\n".join(prefix_lines) + "\n" + original[:character]
+        suffix = original[character:] + "\n" + "\n".join(suffix_lines)
 
         full_prompt = (
-            "<|fim_prefix|>"
-            + "\n".join(lines[:line])
+            "<|fim_prefix|>\n"
             + prefix
-            + "<|fim_suffix|>"
+            + "\n<|fim_suffix|>\n"
             + suffix
-            + "\n".join(lines[line + 1 :])
-            + "<|fim_middle|>"
+            + "\n<|fim_middle|>"
         )
 
         # Create and track the task
