@@ -136,7 +136,7 @@ function M.setup()
 		},
 		on_attach = function(client, bufnr)
 			local root = client.config.root_dir
-			print("root: " .. root)
+			-- print("root: " .. root)
 			if client.name ~= "echo_lsp" then
 				return
 			end
