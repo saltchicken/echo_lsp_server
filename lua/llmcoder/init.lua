@@ -252,7 +252,7 @@ function M.setup(opts)
 		})
 
 		-- Clear ghost text on text changes that might invalidate it
-		vim.api.nvim_create_autocmd({ "TextChangedI", "CursorMovedI" }, {
+		vim.api.nvim_create_autocmd({ "TextChangedI", "CursorMovedI", "InsertCharPre" }, {
 			group = group,
 			callback = function()
 				if state.ghost_data then
