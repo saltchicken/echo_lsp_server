@@ -196,7 +196,7 @@ class LLMCoder:
             suffix = ""
             repo_name = "TEST REPO"
             file_path = "TEST PATH"
-            file_content = original
+            file_content = lines
             full_prompt = (
                 f"<|repo_name|>{repo_name}\n<|file_sep|>{file_path}\n{file_content}"
             )
