@@ -113,6 +113,33 @@ function M.setup(opts)
 		return nil
 	end
 
+	local function handle_get_project_files(_, params, callback)
+		local git_root = M.find_git_root()
+		if not git_root then
+			callback(nil)
+			return
+		end
+
+		local files = M.list_git_files()
+		local results = {}
+
+		for _, relative_path in ipairs(files) do
+			local full_path = git_root .. "/" .. relative_path
+			local content = ""
+			local f = io.open(full_path, "r")
+			if f then
+				content = f:read("*a")
+				f:close()
+			end
+			table.insert(results, {
+				path = relative_path,
+				content = content,
+			})
+		end
+
+		callback(results)
+	end
+
 	local function clear_ghost_text()
 		if state.ghost_data and is_valid_buffer(state.ghost_data.bufnr) then
 			vim.api.nvim_buf_clear_namespace(state.ghost_data.bufnr, ghost_ns, 0, -1)
@@ -396,6 +423,35 @@ function M.setup(opts)
 						desc = "Accept ghost text or insert tab",
 					})
 				)
+				local sent = false
+
+				if not sent then
+					sent = true
+					vim.schedule(function()
+						-- local client = get_llmcoder_client(bufnr)
+						if client then
+							local git_root = M.find_git_root()
+							if not git_root then
+								return
+							end
+
+							local files = M.list_git_files()
+							for _, rel_path in ipairs(files) do
+								local full_path = git_root .. "/" .. rel_path
+								local f = io.open(full_path, "r")
+								if f then
+									local content = f:read("*a")
+									f:close()
+
+									client.notify("custom/projectFile", {
+										path = rel_path,
+										content = content,
+									})
+								end
+							end
+						end
+					end)
+				end
 			end,
 		})
 	end

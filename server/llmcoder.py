@@ -120,6 +120,17 @@ class LLMCoder:
         self.initialized = True
         self.log("LSP Server initialized")
 
+    async def handle_project_file(self, params: Dict[str, Any]):
+        path = params.get("path")
+        content = params.get("content")
+        if not path or content is None:
+            return
+
+        uri = f"project://{path}"
+        self.document_store[uri] = content.splitlines()
+        self.log(f"Stored project file: {path}")
+
+
     async def handle_hover(self, request: Dict[str, Any]) -> None:
         params = request["params"]
         uri = params["textDocument"]["uri"]
@@ -264,6 +275,10 @@ class LLMCoder:
             uri = params["textDocument"]["uri"]
             if uri in self.document_store:
                 del self.document_store[uri]
+        elif method == "custom/projectFile":
+            self.log("It happening actually")
+            await self.handle_project_file(params)
+
 
             # Cancel all tasks for the closed document
             # cancelled = self.cancel_tasks_for_uri(uri)
