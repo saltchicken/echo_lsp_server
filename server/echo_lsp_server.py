@@ -216,10 +216,8 @@ class EchoLSPServer:
                 max_len = min(len(processed), len(suffix))
                 for i in range(max_len, 0, -1):
                     if processed.endswith(suffix[-i:]):
-                        return processed[:-i]
-
-                self.log(f"Processed text does not end with suffix: {suffix}")
-                return processed
+                        processed = processed[:-i]
+                        self.log("It happened")
 
                 self.log("-" * 80)
                 self.log(prompt_context.suffix)
