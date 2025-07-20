@@ -126,9 +126,16 @@ function M.setup()
 						return stat and stat.type == "directory"
 					end
 
-					local path = vim.fn.fnamemodify(fname, ":p")
-					path = vim.fn.resolve(path)
+					-- Fall back to current buffer name if fname is not passed
+					local path = fname or vim.api.nvim_buf_get_name(0)
+					if path == "" then
+						path = vim.loop.cwd()
+					end
 
+					-- Convert to absolute path
+					path = vim.fn.fnamemodify(path, ":p")
+
+					-- Traverse upward
 					while path and path ~= "/" do
 						if is_git_dir(path) then
 							return path
@@ -136,7 +143,8 @@ function M.setup()
 						path = vim.fn.fnamemodify(path, ":h")
 					end
 
-					return nil
+					-- Final fallback: current working dir
+					return vim.loop.cwd()
 				end,
 				single_file_support = true,
 			},
