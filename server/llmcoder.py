@@ -187,6 +187,13 @@ class LLMCoder:
             "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
         )
 
+        def remove_suffix(text):
+            max_len = min(len(text), len(suffix))
+            for i in range(max_len, 0, -1):
+                candidate = suffix[:i]
+                if text.endswith(candidate):
+                    return text[:-i]
+            return text
 
         # Create and track the task
         async def ghost_text_task():
@@ -195,15 +202,7 @@ class LLMCoder:
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
-                # processed = processed.strip()
-                max_len = min(len(processed), len(suffix))
-                for i in range(max_len, 0, -1):
-                    candidate = suffix[:i]
-                    self.log(candidate)
-                    if processed.endswith(candidate):
-                        processed = processed[:-i]
-                        self.log(f"Stripped suffix: {repr(candidate)}")
-                        break
+                processed = remove_suffix(processed)
 
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
