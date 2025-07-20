@@ -34,7 +34,6 @@ function M.find_git_root()
 	return nil
 end
 
-
 -- Get all tracked and untracked-but-n t-ignored files
 function M.list_git_files()
 	local git_root = M.find_git_root()
@@ -52,17 +51,17 @@ function M.list_git_files()
 		return {}
 	end
 
-  local exclude_set = {
-    [".gitignore"] = true,
-    [".gitmodules"] = true,
-  }
+	local exclude_set = {
+		[".gitignore"] = true,
+		[".gitmodules"] = true,
+	}
 
-  local filtered {}
-  for _, file in ipairs(output) do
-    if not exclude_set[file] then
-      table.insert(filtered, file)
-    end
-  end
+	local filtered = {}
+	for _, file in ipairs(output) do
+		if not exclude_set[file] then
+			table.insert(filtered, file)
+		end
+	end
 
 	return filtered
 end
