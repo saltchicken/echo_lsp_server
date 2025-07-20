@@ -120,8 +120,23 @@ function M.setup()
 			default_config = {
 				cmd = { launch },
 				filetypes = { "text", "markdown", "lua", "python", "javascript", "typescript" },
-				root_dir = function()
-					return vim.loop.cwd()
+				root_dir = function(fname)
+					local function is_git_dir(path)
+						local stat = vim.loop.fs_stat(path .. "/.git")
+						return stat and stat.type == "directory"
+					end
+
+					local path = vim.fn.fnamemodify(fname, ":p")
+					path = vim.fn.resolve(path)
+
+					while path and path ~= "/" do
+						if is_git_dir(path) then
+							return path
+						end
+						path = vim.fn.fnamemodify(path, ":h")
+					end
+
+					return nil
 				end,
 				single_file_support = true,
 			},
