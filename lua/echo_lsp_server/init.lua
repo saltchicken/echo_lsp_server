@@ -164,7 +164,9 @@ function M.setup()
 			default_config = {
 				cmd = { launch },
 				filetypes = { "text", "markdown", "lua", "python", "javascript", "typescript" },
-				root_dir = find_git_root,
+				root_dir = function(fname)
+					return find_git_root(fname)
+				end,
 				single_file_support = true,
 			},
 		}
