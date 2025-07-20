@@ -123,10 +123,6 @@ function M.setup(opts)
 			return
 		end
 
-		if col > 0 then
-			col = col - 1
-		end
-
 		-- Clear existing ghost text
 		vim.api.nvim_buf_clear_namespace(bufnr, ghost_ns, 0, -1)
 		state.extmarks = {}
@@ -140,8 +136,11 @@ function M.setup(opts)
 		local first_line_text = lines[1]
 		if first_line_text and #first_line_text > 0 then
 			local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ghost_ns, line_num, col, {
-				virt_text = { { first_line_text, config.ghost_text.hl_group } },
-				virt_text_pos = "overlay",
+				virt_text = {
+					{ string.rep(" ", #first_line_text), "Normal" },
+					{ first_line_text, config.ghost_text.hl_group },
+				},
+				virt_text_pos = "inline",
 				hl_mode = "combine",
 			})
 			table.insert(state.extmarks, extmark_id)
