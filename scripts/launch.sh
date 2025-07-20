@@ -6,4 +6,4 @@ SERVER_DIR="$SCRIPT_DIR/../server"
 VENV_DIR="$SERVER_DIR/.venv"
 
 # Activate the virtual environment and run the server
-exec "$VENV_DIR/bin/python" "$SERVER_DIR/echo_lsp_server.py"
+exec "$VENV_DIR/bin/python" "$SERVER_DIR/llmcoder.py"

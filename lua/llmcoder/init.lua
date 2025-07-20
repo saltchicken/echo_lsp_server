@@ -17,7 +17,7 @@ function M.setup(opts)
 			enabled = true,
 		},
 		server = {
-			launch_script = vim.fn.expand("~/.local/share/echo_lsp_server/launch.sh"),
+			launch_script = vim.fn.expand("~/.local/share/llmcoder/launch.sh"),
 			filetypes = { "text", "markdown", "lua", "python", "javascript", "typescript" },
 		},
 		auto_trigger = {
