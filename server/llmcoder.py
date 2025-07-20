@@ -197,10 +197,12 @@ class LLMCoder:
             self.log(f"Ghost request: character position out of range {character}")
             return
 
+        PREFIX_CONTEXT_LINES = 30
+        SUFFIX_CONTEXT_LINES = 30
 
         # Limit the context to 10 lines before and after
-        prefix_lines = lines[max(0, line - 10) : line]
-        suffix_lines = lines[line + 1 : line + 11]
+        prefix_lines = lines[max(0, line - PREFIX_CONTEXT_LINES) : line]
+        suffix_lines = lines[line + 1 : line + 1 + SUFFIX_CONTEXT_LINES]
 
 
         prefix = "\n".join(prefix_lines) + "\n" + original[:character]
