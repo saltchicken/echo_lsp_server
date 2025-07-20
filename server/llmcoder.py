@@ -183,6 +183,15 @@ class LLMCoder:
         prefix = "\n".join(prefix_lines) + "\n" + original[:character]
         suffix = original[character:] + "\n" + "\n".join(suffix_lines)
 
+        def is_meaningful(text: str) -> bool:
+            return bool(text.strip())
+
+        if is_meaningful(suffix):
+            self.log("Suffix contains content")
+        else:
+            self.log("Suffix is empty or only whitespace, removing it.")
+            suffix = ""
+
         full_prompt = (
             "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
         )
