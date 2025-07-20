@@ -216,6 +216,7 @@ class EchoLSPServer:
                 max_len = min(len(processed), len(suffix))
                 for i in range(max_len, 0, -1):
                     if processed.endswith(suffix[-i:]):
+                        self.log(suffix[-i])
                         processed = processed[:-i]
                         self.log("It happened")
 
