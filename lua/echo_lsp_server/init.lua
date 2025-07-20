@@ -11,34 +11,46 @@ function M.setup()
 	}
 
 	local function find_git_root(start_path)
-		local path = start_path or vim.fn.expand("%:p:h")
-		local root_path = vim.loop.fs_realpath(path)
-
-		if not root_path then
-			return vim.loop.cwd()
+		-- LSP passes filename as first argument, get directory from it
+		local path
+		if start_path then
+			path = vim.fn.fnamemodify(start_path, ":p:h")
+		else
+			path = vim.fn.expand("%:p:h")
 		end
 
-		-- Traverse up the directory tree
-		while root_path do
-			local git_path = root_path .. "/.git"
-			local stat = vim.loop.fs_stat(git_path)
+		local current_dir = path
 
+		-- Debug: print starting directory
+		print("Starting search from: " .. current_dir)
+
+		-- Traverse up the directory tree
+		while current_dir and current_dir ~= "" do
+			local git_path = current_dir .. "/.git"
+
+			-- Debug: print current check
+			print("Checking for .git in: " .. current_dir)
+
+			-- Check if .git exists (as file or directory)
+			local stat = vim.loop.fs_stat(git_path)
 			if stat then
-				return root_path
+				print("Found .git at: " .. current_dir)
+				return current_dir
 			end
 
 			-- Get parent directory
-			local parent = vim.fn.fnamemodify(root_path, ":h")
+			local parent = vim.fn.fnamemodify(current_dir, ":h")
 
 			-- If we've reached the root of the filesystem, stop
-			if parent == root_path then
+			if parent == current_dir or parent == "/" or parent == "" then
 				break
 			end
 
-			root_path = parent
+			current_dir = parent
 		end
 
 		-- Fallback to current working directory if no .git found
+		print("No .git found, falling back to: " .. vim.loop.cwd())
 		return vim.loop.cwd()
 	end
 
