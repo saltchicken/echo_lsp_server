@@ -2,6 +2,7 @@ local M = {}
 
 function M.setup()
 	local lspconfig = require("lspconfig")
+	local util = require("lspconfig/util")
 	local ghost_ns = vim.api.nvim_create_namespace("echo_lsp_ghost")
 	local state = {
 		extmarks = {},
@@ -120,10 +121,7 @@ function M.setup()
 			default_config = {
 				cmd = { launch },
 				filetypes = { "text", "markdown", "lua", "python", "javascript", "typescript" },
-				root_markers = { ".git" },
-				root_dir = function()
-					return vim.loop.cwd()
-				end,
+				root_dir = util.root_pattern(".git", "README.md"),
 				single_file_support = true,
 			},
 		}
