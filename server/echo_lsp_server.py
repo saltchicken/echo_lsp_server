@@ -213,7 +213,10 @@ class EchoLSPServer:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
                 # processed = processed.strip()
-                #
+                # I want to check if the end of processed matches the beginning of prompt_context.suffix
+                if processed.endswith(prompt_context.suffix):
+                    processed = processed[: -len(prompt_context.suffix)]
+                    self.log("IT HAPPENED")
                 self.log(prompt_context.suffix)
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
