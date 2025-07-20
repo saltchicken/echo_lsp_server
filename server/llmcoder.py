@@ -306,7 +306,7 @@ class LLMCoder:
                 await self.handle_cancel_request(message)
             elif method == "custom/projectFile":
                 self.log("It happening actually")
-                await self.handle_project_file(params)
+                await self.handle_project_file(message.get("params", {}))
             elif method == "shutdown":
                 # Cancel all tasks on shutdown
                 self.cancel_all_tasks()
