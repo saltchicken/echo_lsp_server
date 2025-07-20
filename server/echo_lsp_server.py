@@ -188,6 +188,8 @@ class EchoLSPServer:
             self.log(f"Ghost request: character position out of range {character}")
             return
 
+        prompt_context = PromptContext(uri, line, character, "", "", "")
+
         # Limit the context to 10 lines before and after
         prefix_lines = lines[max(0, line - 10) : line]
         suffix_lines = lines[line + 1 : line + 11]
@@ -199,14 +201,19 @@ class EchoLSPServer:
             "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
         )
 
+        prompt_context.prefix = prefix
+        prompt_context.suffix = suffix
+        prompt_context.full_prompt = full_prompt
+
         # Create and track the task
-        async def ghost_text_task():
+        async def ghost_text_task(context: PromptContext):
             try:
                 processed = await self.query_external_api(full_prompt)
                 if processed is False:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
                 # processed = processed.strip()
+                self.log(prompt_context.suffix)
                 await self.send_ghost_text(uri, line, processed)
                 self.log(f"Ghost text sent for line {line + 1}")
             except asyncio.CancelledError:
