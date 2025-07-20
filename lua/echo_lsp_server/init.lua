@@ -1,4 +1,3 @@
-print("Is this running twice")
 local M = {}
 
 function M.setup()
