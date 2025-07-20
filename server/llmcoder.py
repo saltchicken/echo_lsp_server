@@ -18,6 +18,7 @@ class LLMCoder:
         self.document_store: Dict[str, List[str]] = {}
         self.io = LSPStreamIO()
         self.active_tasks: Set[asyncio.Task] = set()
+        self.project_files: Dict[str, str] = {}  # key: file path, value: file content
 
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
@@ -126,9 +127,14 @@ class LLMCoder:
         if not path or content is None:
             return
 
-        uri = f"project://{path}"
-        self.document_store[uri] = content.splitlines()
+        self.project_files[path] = content
         self.log(f"Stored project file: {path}")
+
+    def build_repo_context(self, repo_name: str = "MyRepo") -> str:
+        parts = [f"<|repo_name|>{repo_name}"]
+        for path, content in self.project_files.items():
+            parts.append(f"<|file_sep|>{path}\n{content}")
+        return "\n".join(parts)
 
 
     async def handle_hover(self, request: Dict[str, Any]) -> None:
@@ -194,9 +200,17 @@ class LLMCoder:
         prefix = "\n".join(prefix_lines) + "\n" + original[:character]
         suffix = original[character:] + "\n" + "\n".join(suffix_lines)
 
+        # TODO: How do I dynamically create a repo name
+        repo_context = self.build_repo_context("Repo In Development")
+
+
+
+
         full_prompt = (
             "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
         )
+
+        full_prompt = repo_context + "\n" + full_prompt
 
         # def is_meaningful(text: str) -> bool:
         #     return bool(text.strip())
