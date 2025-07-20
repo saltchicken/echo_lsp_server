@@ -1,5 +1,6 @@
-print("Hello World I am actually running")
-local function find_git_root()
+local M = {}
+
+function M.find_git_root()
 	local uv = vim.loop -- use luv bindings
 	local cwd = uv.cwd()
 	local home = os.getenv("HOME") or "~"
@@ -33,3 +34,6 @@ local function find_git_root()
 	-- fallback if no .git directory was found
 	return cwd
 end
+
+return M
+
