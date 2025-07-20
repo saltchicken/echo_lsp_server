@@ -213,7 +213,7 @@ class EchoLSPServer:
                     self.log("External API failed, not sending ghost text", "ERROR")
                     return
                 # processed = processed.strip()
-                max_len = min(len(processed), len(suffix))
+                max_len = min(len(processed), len(prompt_context.suffix))
                 for i in range(max_len, 0, -1):
                     if processed.endswith(suffix[-i:]):
                         self.log(suffix[-i])
