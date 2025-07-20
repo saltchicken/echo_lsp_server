@@ -251,8 +251,6 @@ function M.setup(opts)
 			callback = cancel_ghost_text,
 		})
 
-		-- Clear ghost text on text changes that might invalidate it
-		-- Clear ghost text on text changes or movement
 		vim.api.nvim_create_autocmd({ "TextChangedI", "CursorMovedI", "InsertCharPre" }, {
 			group = group,
 			callback = function()
@@ -261,11 +259,9 @@ function M.setup(opts)
 					local current_line = cursor[1] - 1
 					local current_col = cursor[2]
 
-					-- If cursor moved or typed before ghost
 					if current_line ~= state.ghost_data.line or current_col < state.ghost_data.col then
 						clear_ghost_text()
 					else
-						-- Any character typed cancels unless it's <Tab> (handled separately)
 						clear_ghost_text()
 					end
 				end
