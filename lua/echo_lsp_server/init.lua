@@ -123,6 +123,10 @@ function M.setup(opts)
 			return
 		end
 
+		if col > 0 then
+			col = col - 1
+		end
+
 		-- Clear existing ghost text
 		vim.api.nvim_buf_clear_namespace(bufnr, ghost_ns, 0, -1)
 		state.extmarks = {}
