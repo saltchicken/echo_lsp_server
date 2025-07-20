@@ -134,6 +134,8 @@ function M.setup()
 			["ghostText/virtualText"] = vim.schedule_wrap(on_ghost_text),
 		},
 		on_attach = function(client, bufnr)
+			local root = client.config.root_dir
+			print("root: " .. root)
 			if client.name ~= "echo_lsp" then
 				return
 			end
