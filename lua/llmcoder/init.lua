@@ -1,7 +1,7 @@
 local M = {}
 
 function M.find_git_root()
-	local uv = vim.loop -- use luv bindings
+	local uv = vim.loop
 	local cwd = uv.cwd()
 	local home = os.getenv("HOME") or "~"
 
@@ -31,9 +31,27 @@ function M.find_git_root()
 		dir = parent
 	end
 
-	-- fallback if no .git directory was found
-	-- return cwd
 	return nil
+end
+
+-- Get all tracked and untracked-but-not-ignored files
+function M.list_git_files()
+	local git_root = M.find_git_root()
+	if not git_root then
+		vim.notify("Not inside a Git repo", vim.log.levels.WARN)
+		return {}
+	end
+
+	-- Use Git to list files respecting .gitignore
+	local cmd = { "git", "-C", git_root, "ls-files", "--cached", "--others", "--exclude-standard" }
+	local output = vim.fn.systemlist(cmd)
+
+	if vim.v.shell_error ~= 0 then
+		vim.notify("Failed to list files: " .. table.concat(output, "\n"), vim.log.levels.ERROR)
+		return {}
+	end
+
+	return output
 end
 
 function M.setup(opts)
