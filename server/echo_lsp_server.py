@@ -6,10 +6,22 @@ import sys
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Set
 import weakref
+from dataclasses import dataclass
+
 
 # import requests
 import httpx
 from lsp_stream_io import LSPStreamIO
+
+
+@dataclass
+class PromptContext:
+    uri: str
+    line: int
+    character: int
+    prefix: str
+    suffix: str
+    full_prompt: str
 
 
 class EchoLSPServer:
