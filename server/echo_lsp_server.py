@@ -184,11 +184,7 @@ class EchoLSPServer:
         suffix = original[character:] + "\n" + "\n".join(suffix_lines)
 
         full_prompt = (
-            "<|fim_prefix|>\n"
-            + prefix
-            + "\n<|fim_suffix|>\n"
-            + suffix
-            + "\n<|fim_middle|>"
+            "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
         )
 
         # Create and track the task
