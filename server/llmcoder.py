@@ -128,11 +128,11 @@ class LLMCoder:
         if not path or content is None:
             return
 
-        self.project_files[path] = content
-        self.log(f"Stored project file: {path}")
-        self.repo_root = params.get("root")
         self.repo_root = os.path.basename(os.path.normpath(self.repo_root))
         self.log(f"Repo root set to: {self.repo_root}")
+        self.project_files[self.repo_root + "/" + path] = content
+        self.log(f"Stored project file: {path}")
+        self.repo_root = params.get("root")
 
     def build_repo_context(self) -> str:
 
