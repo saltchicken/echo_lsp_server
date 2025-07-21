@@ -220,7 +220,7 @@ class LLMCoder:
 
         # full_prompt = repo_context + "\n" + full_prompt
 
-        with open("repo_context.txt", "w") as f:
+        with open("repo_context.log", "w") as f:
             f.write(repo_context)
 
 
