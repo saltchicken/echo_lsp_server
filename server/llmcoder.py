@@ -21,6 +21,8 @@ class LLMCoder:
         self.project_files: Dict[str, str] = {}  # key: file path, value: file content
         self.repo_root: Optional[str] = None
         self.llm_api_url = os.environ.get("LLM_API_URL", "http://localhost:8000/generate")
+        self.log("jdlakjsdlkjfalsdjf")
+        self.log(self.llm_api_url)
 
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
