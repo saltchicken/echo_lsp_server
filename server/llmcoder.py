@@ -15,14 +15,14 @@ class LLMCoder:
     def __init__(self):
         self.running = True
         self.initialized = False
+
         self.document_store: Dict[str, List[str]] = {}
         self.io = LSPStreamIO()
         self.active_tasks: Set[asyncio.Task] = set()
         self.project_files: Dict[str, str] = {}  # key: file path, value: file content
         self.repo_root: Optional[str] = None
         self.llm_api_url = os.environ.get("LLM_API_URL", "http://localhost:8000/generate")
-        self.log("jdlakjsdlkjfalsdjf")
-        self.log(self.llm_api_url)
+
 
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
@@ -30,6 +30,10 @@ class LLMCoder:
 
         with open(self.log_file, "w") as f:
             f.write(f"=== LLM Coder Server Started at {datetime.now()} ===\n")
+
+
+        self.log("ajsdlkjfasd")
+        self.log(self.llm_api_url)
 
     def log(self, message: str, level: str = "INFO") -> None:
         try:
