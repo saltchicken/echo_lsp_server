@@ -218,7 +218,7 @@ class LLMCoder:
             "<|fim_prefix|>\n" + prefix + "<|fim_suffix|>" + suffix + "\n<|fim_middle|>"
         )
 
-        full_prompt = repo_context + "\n" + full_prompt
+        # full_prompt = repo_context + "\n" + full_prompt
 
 
         # def is_meaningful(text: str) -> bool:
