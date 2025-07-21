@@ -220,8 +220,9 @@ class LLMCoder:
 
         # full_prompt = repo_context + "\n" + full_prompt
 
-        with open("repo_context.txt") as f:
+        with open("repo_context.txt", "w") as f:
             f.write(repo_context)
+
 
         # def is_meaningful(text: str) -> bool:
         #     return bool(text.strip())
