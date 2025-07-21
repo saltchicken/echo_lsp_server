@@ -20,6 +20,7 @@ class LLMCoder:
         self.active_tasks: Set[asyncio.Task] = set()
         self.project_files: Dict[str, str] = {}  # key: file path, value: file content
         self.repo_root: Optional[str] = None
+        self.llm_api_url = os.environ.get("LLM_API_URL", "http://localhost:8000/generate")
 
         log_dir = os.path.expanduser("~/.cache/nvim")
         os.makedirs(log_dir, exist_ok=True)
@@ -80,7 +81,7 @@ class LLMCoder:
             }
 
             async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.post("http://main:8000/generate", json=payload)
+                response = await client.post(self.llm_api_url, json=payload)
                 if response.status_code != 200:
                     self.log(
                         f"API returned status {response.status_code}: {response.text}",
